@@ -13,6 +13,7 @@
  * - expected-next-focus-element-id
  * - expected-previous-focus-element-id
  * 
+ * Replace the startLocation with the actual URL of the page where the accordion is to be found for testing
  */
 
 const { test, expect } = require("@playwright/test");
