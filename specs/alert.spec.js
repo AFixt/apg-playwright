@@ -106,6 +106,9 @@ test.describe('Alert — appearance and focus behaviour', () => {
     const alert = insertedAlert(page);
     await expect(alert).toBeVisible();
 
+    // A real wall-clock wait is the assertion, not a workaround for flakiness:
+    // there is no event to await for "the alert did not remove itself".
+    // eslint-disable-next-line playwright/no-wait-for-timeout
     await page.waitForTimeout(5_000);
 
     await expect(alert).toBeVisible();

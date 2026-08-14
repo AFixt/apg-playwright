@@ -57,6 +57,10 @@ Any implementation that follows the APG should pass these specs unchanged — th
 | `specs/support/apg.js` | Shared helpers — `tabUntilFocused`, `isFocused`, `tabindexes`, … |
 | `playwright.config.js` | Chromium, Firefox and WebKit projects                            |
 
+## Browser engines
+
+`npm test` runs Chromium. `npm run test:engines` runs all three, and currently reports 21 failures — all of them host tab-model differences rather than defects in the code under test: WebKit omits links from the tab sequence entirely, and Firefox wraps the tab ring without passing through `<body>`. Both break assertions of the form "this composite is a single tab stop". Rather than weaken those assertions — they are the ones that catch roving-tabindex regressions — the reformulation is tracked in [#4](https://github.com/AFixt/apg-playwright/issues/4).
+
 ## Reading a failure
 
 `test.fail()` marks a spec that asserts correct APG behaviour the component does not yet implement, with the tracking issue named in a comment. Those specs are expected to fail today and will report as _unexpectedly passing_ the moment the underlying bug is fixed — which is the signal to remove the marker. A `test.fail()` is a tracked gap, never a silenced test.
