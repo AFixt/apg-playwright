@@ -59,8 +59,14 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      - name: Prettier
+        run: npm run format:check
+
       - name: markdownlint
         run: npm run markdownlint
+
+      - name: npm audit
+        run: npm run security:audit
 
       - name: Playwright tests
         run: npm test

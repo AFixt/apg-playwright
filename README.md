@@ -45,22 +45,22 @@ Any implementation that follows the APG should pass these specs unchanged — th
 
 ## Layout
 
-| Path | Purpose |
-| --- | --- |
-| `specs/*.spec.js` | One file per APG pattern |
+| Path                   | Purpose                                                          |
+| ---------------------- | ---------------------------------------------------------------- |
+| `specs/*.spec.js`      | One file per APG pattern                                         |
 | `specs/support/apg.js` | Shared helpers — `tabUntilFocused`, `isFocused`, `tabindexes`, … |
-| `playwright.config.js` | Chromium, Firefox and WebKit projects |
+| `playwright.config.js` | Chromium, Firefox and WebKit projects                            |
 
 ## Reading a failure
 
-`test.fail()` marks a spec that asserts correct APG behaviour the component does not yet implement, with the tracking issue named in a comment. Those specs are expected to fail today and will report as *unexpectedly passing* the moment the underlying bug is fixed — which is the signal to remove the marker. A `test.fail()` is a tracked gap, never a silenced test.
+`test.fail()` marks a spec that asserts correct APG behaviour the component does not yet implement, with the tracking issue named in a comment. Those specs are expected to fail today and will report as _unexpectedly passing_ the moment the underlying bug is fixed — which is the signal to remove the marker. A `test.fail()` is a tracked gap, never a silenced test.
 
 ## Patterns not covered
 
-| Pattern | Why |
-| --- | --- |
-| `alertdialog` | The `AlertDialog` component cannot structurally express the confirm/cancel pattern — [apg-react#143](https://github.com/AFixt/apg-react/issues/143) |
-| `window-splitter` | No component exists — [apg-react#140](https://github.com/AFixt/apg-react/issues/140) |
+| Pattern           | Why                                                                                                                                                 |
+| ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `alertdialog`     | The `AlertDialog` component cannot structurally express the confirm/cancel pattern — [apg-react#143](https://github.com/AFixt/apg-react/issues/143) |
+| `window-splitter` | No component exists — [apg-react#140](https://github.com/AFixt/apg-react/issues/140)                                                                |
 
 Hand-rolling either pattern inside a spec would produce a test that cannot fail, so neither is stubbed out here.
 
