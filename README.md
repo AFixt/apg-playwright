@@ -21,9 +21,15 @@ Start the demo server in one terminal:
 ```sh
 git clone https://github.com/AFixt/apg-react.git
 cd apg-react
-nvm use && npm ci
+nvm use 22 && npm ci   # NOT `nvm use` — see the note below
 npm run serve          # serves http://localhost:8080/demos/<pattern>.html
 ```
+
+> **Use Node 22 for apg-react, not its `.nvmrc`.** That repo pins `.nvmrc` to
+> `20` while its `package.json` requires `>=22.13.0` with `engine-strict=true`,
+> so the documented `nvm use && npm ci` fails with `EBADENGINE`. Tracked as
+> [apg-react#149](https://github.com/AFixt/apg-react/issues/149). This suite
+> also targets Node 22 so a single version serves both repos.
 
 Then run the suite in another:
 
