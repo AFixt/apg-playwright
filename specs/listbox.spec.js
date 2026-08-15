@@ -25,7 +25,13 @@
  * expressed here as its roving-tabindex equivalent.
  */
 const { test, expect } = require('@playwright/test');
-const { gotoPattern, tabUntilFocused, isFocused, tabindexes } = require('./support/apg');
+const {
+  gotoPattern,
+  tabUntilFocused,
+  isFocused,
+  expectTabExits,
+  tabindexes,
+} = require('./support/apg');
 
 const FRUITS = ['Apple', 'Banana', 'Cherry', 'Date', 'Elderberry'];
 
@@ -150,13 +156,11 @@ test.describe('Listbox — keyboard navigation', () => {
     await expect(page.getByRole('listbox', { name: 'Fruits' })).toHaveAttribute('tabindex', '-1');
     expect(await tabindexes(optionsOf(page))).toEqual(['0', '-1', '-1', '-1', '-1']);
 
-    await page.keyboard.press('Tab');
-    for (const name of FRUITS) {
-      expect(
-        await isFocused(page.getByRole('option', { name })),
-        `Tab must leave the listbox, not walk onto ${name}`
-      ).toBe(false);
-    }
+    await expectTabExits(
+      page,
+      page.getByRole('listbox', { name: 'Fruits' }),
+      'Tab must leave the listbox rather than walk its options'
+    );
   });
 
   test('the roving tabindex follows focus as arrow keys move it', async ({ page }) => {

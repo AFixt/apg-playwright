@@ -20,7 +20,7 @@
  *     button that opens a menu.
  */
 const { test, expect } = require('@playwright/test');
-const { gotoPattern, tabUntilFocused, isFocused } = require('./support/apg');
+const { gotoPattern, tabUntilFocused, isFocused, pressTab } = require('./support/apg');
 
 test.beforeEach(async ({ page }) => {
   await gotoPattern(page, 'button');
@@ -211,7 +211,7 @@ test.describe('Button — unavailable action', () => {
     const mute = page.getByRole('button', { name: 'Mute' });
     await tabUntilFocused(page, mute);
 
-    await page.keyboard.press('Tab');
+    await pressTab(page);
 
     const submit = page.getByRole('button', { name: 'Submit' });
     expect(await isFocused(submit), 'a natively disabled button is skipped by Tab').toBe(false);

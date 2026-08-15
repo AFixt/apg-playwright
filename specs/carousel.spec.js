@@ -30,7 +30,7 @@
  * ---------------------------------------------------------------------------
  */
 const { test, expect } = require('@playwright/test');
-const { gotoPattern, tabUntilFocused, isFocused } = require('./support/apg');
+const { gotoPattern, tabUntilFocused, isFocused, pressTab } = require('./support/apg');
 
 const SLIDES = [
   'Grand Canyon National Park',
@@ -108,7 +108,7 @@ test.describe('Carousel — roles and properties', () => {
     ];
 
     for (const control of expected) {
-      await page.keyboard.press('Tab');
+      await pressTab(page);
       expect(await isFocused(control), 'every carousel control must be in the Tab ring').toBe(true);
     }
   });
@@ -121,7 +121,7 @@ test.describe('Carousel — automatic rotation', () => {
     await stopRotation(page);
 
     const control = page.getByRole('button', { name: ROTATION });
-    await page.keyboard.press('Tab');
+    await pressTab(page);
     expect(await isFocused(control), 'the rotation control must be the first Tab stop').toBe(true);
 
     // Rotation is stopped, so the control offers to resume. Activating it must

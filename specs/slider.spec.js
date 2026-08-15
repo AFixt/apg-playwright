@@ -8,7 +8,7 @@
  *   slider-user-friendly-value
  */
 const { test, expect } = require('@playwright/test');
-const { gotoPattern, tabUntilFocused, isFocused } = require('./support/apg');
+const { gotoPattern, tabUntilFocused, isFocused, pressTab } = require('./support/apg');
 
 // The demo publishes two independent sliders. They are deliberately different
 // shapes: "Volume" is a plain numeric range, "Temperature" is a four-position
@@ -94,7 +94,7 @@ test.describe('Slider — roles, states, and properties', () => {
     const presses = await tabUntilFocused(page, volume);
     expect(presses, 'Volume must be reachable by Tab').toBeGreaterThan(0);
 
-    await page.keyboard.press('Tab');
+    await pressTab(page);
     expect(await isFocused(temperature), 'Tab should reach Temperature next').toBe(true);
   });
 });

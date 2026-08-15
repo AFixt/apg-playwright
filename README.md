@@ -51,15 +51,22 @@ Any implementation that follows the APG should pass these specs unchanged — th
 
 ## Layout
 
-| Path                   | Purpose                                                          |
-| ---------------------- | ---------------------------------------------------------------- |
-| `specs/*.spec.js`      | One file per APG pattern                                         |
-| `specs/support/apg.js` | Shared helpers — `tabUntilFocused`, `isFocused`, `tabindexes`, … |
-| `playwright.config.js` | Chromium, Firefox and WebKit projects                            |
+| Path                   | Purpose                                                         |
+| ---------------------- | --------------------------------------------------------------- |
+| `specs/*.spec.js`      | One file per APG pattern                                        |
+| `specs/support/apg.js` | Shared helpers — `pressTab`, `tabUntilFocused`, `tabindexes`, … |
+| `playwright.config.js` | Chromium, Firefox and WebKit projects                           |
 
 ## Browser engines
 
-`npm test` runs Chromium. `npm run test:engines` runs all three, and currently reports 21 failures — all of them host tab-model differences rather than defects in the code under test: WebKit omits links from the tab sequence entirely, and Firefox wraps the tab ring without passing through `<body>`. Both break assertions of the form "this composite is a single tab stop". Rather than weaken those assertions — they are the ones that catch roving-tabindex regressions — the reformulation is tracked in [#4](https://github.com/AFixt/apg-playwright/issues/4).
+`npm test` runs Chromium, which is the fast inner loop. `npm run test:engines` runs Chromium, Firefox and WebKit — the same specs, with the same assertions, green on all three.
+
+Getting there took two adjustments in the harness rather than in the assertions, because the engines do not model the tab sequence identically:
+
+- **WebKit does not put links in the plain-Tab ring.** It follows the macOS "full keyboard access" default, where <kbd>Tab</kbd> visits form controls and <kbd>Option</kbd>+<kbd>Tab</kbd> visits everything — which is what a Safari user on default settings actually presses. `pressTab()` probes for this at runtime, by focusing a scaffolding element and seeing which chord reaches a link, and then sends whichever one this host advances focus with. Nothing is skipped, and the probe asks about capability rather than browser name, so a WebKit build that does include links is detected rather than assumed.
+- **Firefox parks focus on the last tabbable element** instead of cycling out through the document. On a demo page whose only tab stop is the widget, "Tab leaves the widget" therefore read as "Tab stayed put". `gotoPattern()` appends one focusable `div[tabindex="0"]` to `<body>`, outside `#demo-root`, so every page has a tab stop after the widget and focus always has somewhere real to go. No widget markup is touched, and the sentinel carries no ARIA role, so role-based locators in the specs cannot see it.
+
+Both live in `specs/support/apg.js`. The assertions the specs make — including "this composite is a single tab stop", the one that catches roving-tabindex regressions — are unchanged.
 
 ## Repository checks
 

@@ -17,7 +17,13 @@
  * behaviours, and only the cell half is applicable here.
  */
 const { test, expect } = require('@playwright/test');
-const { gotoPattern, tabUntilFocused, isFocused, tabindexes } = require('./support/apg');
+const {
+  gotoPattern,
+  tabUntilFocused,
+  isFocused,
+  expectTabExits,
+  tabindexes,
+} = require('./support/apg');
 
 const MEMBERS = '[role="treegrid"] [role="gridcell"]';
 
@@ -156,11 +162,11 @@ test.describe('Treegrid — keyboard navigation', () => {
     const presses = await tabUntilFocused(page, cell(page, 'Phase 1'));
     expect(presses, 'the treegrid must be reachable by Tab').toBe(1);
 
-    await page.keyboard.press('Tab');
-    await expect(
-      page.locator('[role="treegrid"] *:focus'),
+    await expectTabExits(
+      page,
+      page.locator('[role="treegrid"]'),
       'a second Tab must leave the treegrid, not walk its cells'
-    ).toHaveCount(0);
+    );
   });
 
   test('Down and Up Arrow move between rows in the same column', async ({ page }) => {

@@ -12,7 +12,7 @@
  *   combobox-tab-behavior-with-open-popup, combobox-popup-aria-roles
  */
 const { test, expect } = require('@playwright/test');
-const { gotoPattern, tabUntilFocused, isFocused } = require('./support/apg');
+const { gotoPattern, tabUntilFocused, isFocused, pressTab } = require('./support/apg');
 
 const LABEL = 'Country';
 const TOGGLE = 'Open suggestions';
@@ -96,7 +96,7 @@ test.describe('Combobox — roles, states, and properties', () => {
 
     const presses = await tabUntilFocused(page, combobox);
     expect(presses, 'the combobox must be reachable by Tab').toBeGreaterThan(0);
-    await page.keyboard.press('Tab');
+    await pressTab(page);
     expect(await isFocused(toggle), 'Tab must not land on the toggle button').toBe(false);
 
     await toggle.click();
@@ -207,7 +207,7 @@ test.describe('Combobox — opening and closing the popup', () => {
     await page.keyboard.press('ArrowDown');
     await expect(page.getByRole('listbox')).toBeVisible();
 
-    await page.keyboard.press('Tab');
+    await pressTab(page);
     await expect(combobox).toHaveAttribute('aria-expanded', 'false');
     await expect(page.getByRole('listbox')).toHaveCount(0);
     expect(await isFocused(combobox), 'Tab must move focus out of the combobox').toBe(false);

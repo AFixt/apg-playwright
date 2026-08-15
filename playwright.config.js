@@ -39,32 +39,27 @@ module.exports = defineConfig({
     video: 'off',
   },
   /**
-   * Chromium is the default engine, and the only one in the default run.
+   * All three engines run the same specs, with the same assertions.
    *
    * These specs assert page *tab-sequence* behaviour — "this composite is a
-   * single tab stop", "Tab leaves the widget", "Tab visits the links in order".
-   * Those assertions are sensitive to the host engine's tab model, which
-   * differs in ways that have nothing to do with the component under test:
+   * single tab stop", "Tab leaves the widget", "Tab visits the links in order"
+   * — and the three engines do not model the tab sequence identically. Two
+   * differences used to fail 21 tests against a perfectly correct page:
    *
-   *   - WebKit omits links from the tab sequence entirely. On the Link and
-   *     Breadcrumb demos, Tab never moves focus off <body>, so every
-   *     link-reachability assertion fails against a perfectly correct page.
-   *   - Firefox wraps the tab ring straight back to the first control when a
-   *     document has no other tab stop, where Chromium passes through <body>
-   *     first. "Tab leaves this widget" therefore reads as "Tab stayed put".
+   *   - WebKit follows the macOS "full keyboard access" default, where Tab
+   *     visits form controls only and Option+Tab visits everything, links
+   *     included.
+   *   - Firefox parks focus on the last tabbable element rather than cycling
+   *     out through the document, so on a page whose only tab stop is the
+   *     widget, "Tab leaves this widget" read as "Tab stayed put".
    *
-   * Both are real, documented engine behaviours. Neither is an accessibility
-   * defect in apg-react, and papering over them by loosening the assertions
-   * would throw away the strongest tests in the suite.
+   * Both are handled in `specs/support/apg.js` — by sending the chord the host
+   * engine actually advances focus with, and by giving every demo page a tab
+   * stop after the widget — so no assertion had to be weakened to make the
+   * suite portable. See the comments there, and issue #4.
    *
-   * Firefox and WebKit are kept configured and can be run explicitly:
-   *
-   *   npx playwright test --project=firefox
-   *
-   * Reformulating the tab-sequence assertions so they hold across all three
-   * engines — most likely by asserting the roving-tabindex distribution, which
-   * is engine-independent, and adding sentinel controls around each widget —
-   * is tracked as issue #4 in this repo.
+   * `npm test` still runs Chromium alone, because that is the fast inner loop.
+   * `npm run test:engines` runs all three.
    */
   projects: [
     { name: 'chromium', use: { ...devices['Desktop Chrome'] } },

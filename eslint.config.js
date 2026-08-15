@@ -48,8 +48,9 @@ module.exports = [
       // Several specs factor repeated ARIA checks into named helpers
       // (expectMixed, expectActiveOption, …). Those are still assertions, so
       // teach the rule to recognise them rather than have every caller look
-      // like a test with no expectations.
-      'playwright/expect-expect': ['warn', { assertFunctionNames: ['expect*'] }],
+      // like a test with no expectations. The glob only catches helpers
+      // defined in the same file, so shared ones are named outright.
+      'playwright/expect-expect': ['warn', { assertFunctionNames: ['expect*', 'expectTabExits'] }],
     },
   },
 ];

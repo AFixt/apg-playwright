@@ -18,7 +18,13 @@
  *     contains plain command items only.
  */
 const { test, expect } = require('@playwright/test');
-const { gotoPattern, tabUntilFocused, isFocused, tabindexes } = require('./support/apg');
+const {
+  gotoPattern,
+  tabUntilFocused,
+  isFocused,
+  expectTabExits,
+  tabindexes,
+} = require('./support/apg');
 
 const BAR_ITEMS = ['File', 'Edit', 'View'];
 const FILE_ITEMS = ['New', 'Open', 'Save', 'Save As'];
@@ -168,13 +174,11 @@ test.describe('Menubar — navigating the menubar', () => {
     await enterMenubarOn(page, 'File');
     expect(await tabindexes(barItemsOf(page))).toEqual(['0', '-1', '-1']);
 
-    await page.keyboard.press('Tab');
-    for (const name of BAR_ITEMS) {
-      expect(
-        await isFocused(page.getByRole('menuitem', { name, exact: true })),
-        `Tab must leave the menubar, not walk onto ${name}`
-      ).toBe(false);
-    }
+    await expectTabExits(
+      page,
+      page.locator('[role=menubar]'),
+      'Tab must leave the menubar rather than walk its items'
+    );
   });
 
   test('the roving tabindex follows focus as arrow keys move it', async ({ page }) => {

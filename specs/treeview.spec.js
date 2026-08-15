@@ -18,7 +18,13 @@
  * Documents opens to Resume.pdf and CoverLetter.pdf.
  */
 const { test, expect } = require('@playwright/test');
-const { gotoPattern, tabUntilFocused, isFocused, tabindexes } = require('./support/apg');
+const {
+  gotoPattern,
+  tabUntilFocused,
+  isFocused,
+  expectTabExits,
+  tabindexes,
+} = require('./support/apg');
 
 const ROOTS = ['Documents', 'Pictures', 'Notes.txt'];
 
@@ -204,13 +210,11 @@ test.describe('Tree View — keyboard navigation', () => {
 
     expect(await tabindexes(rootItemsOf(page))).toEqual(['0', '-1', '-1']);
 
-    await page.keyboard.press('Tab');
-    for (const name of ROOTS) {
-      expect(
-        await isFocused(item(page, name)),
-        `Tab must leave the tree, not walk onto ${name}`
-      ).toBe(false);
-    }
+    await expectTabExits(
+      page,
+      page.locator('[role=tree]'),
+      'Tab must leave the tree rather than walk its nodes'
+    );
   });
 
   test('the roving tabindex follows focus as arrow keys move it', async ({ page }) => {

@@ -20,7 +20,13 @@
  * currently gets wrong — see the test.fail below.
  */
 const { test, expect } = require('@playwright/test');
-const { gotoPattern, tabUntilFocused, isFocused, tabindexes } = require('./support/apg');
+const {
+  gotoPattern,
+  tabUntilFocused,
+  isFocused,
+  expectTabExits,
+  tabindexes,
+} = require('./support/apg');
 
 const RADIOS = ['Standard', 'Express', 'Overnight'];
 
@@ -114,14 +120,11 @@ test.describe('Radio Group — reaching the group', () => {
 
   test('the group is a single tab stop', async ({ page }) => {
     await enterGroupWith(page, 'Standard');
-    await page.keyboard.press('Tab');
-
-    for (const name of RADIOS) {
-      expect(
-        await isFocused(page.getByRole('radio', { name })),
-        `Tab must leave the group, not walk onto ${name}`
-      ).toBe(false);
-    }
+    await expectTabExits(
+      page,
+      page.getByRole('radiogroup', { name: 'Shipping Method' }),
+      'Tab must leave the group rather than walk its radios'
+    );
   });
 });
 

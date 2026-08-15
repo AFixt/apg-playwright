@@ -16,7 +16,14 @@
  * wrong is still unusable.
  */
 const { test, expect } = require('@playwright/test');
-const { gotoPattern, tabUntilFocused, isFocused, activeElementInfo } = require('./support/apg');
+const {
+  gotoPattern,
+  tabUntilFocused,
+  isFocused,
+  activeElementInfo,
+  pressShiftTab,
+  pressTab,
+} = require('./support/apg');
 
 /** The dialog's focusable contents, in DOM order. */
 const TAB_RING = ['Name', 'Email', 'Save', 'Cancel', 'Close dialog'];
@@ -65,10 +72,10 @@ test.describe('Modal dialog — roles, states, and properties', () => {
     ).toBeVisible();
 
     // Reaching it by Tab is what makes it a control rather than decoration.
-    await page.keyboard.press('Tab');
-    await page.keyboard.press('Tab');
-    await page.keyboard.press('Tab');
-    await page.keyboard.press('Tab');
+    await pressTab(page);
+    await pressTab(page);
+    await pressTab(page);
+    await pressTab(page);
     expect(await isFocused(close)).toBe(true);
   });
 });
@@ -88,11 +95,11 @@ test.describe('Modal dialog — focus management', () => {
     await openWithKeyboard(page);
 
     for (let i = 1; i < TAB_RING.length; i += 1) {
-      await page.keyboard.press('Tab');
+      await pressTab(page);
     }
     expect(await isFocused(page.getByRole('button', { name: 'Close dialog' }))).toBe(true);
 
-    await page.keyboard.press('Tab');
+    await pressTab(page);
     expect(
       await isFocused(page.getByRole('textbox', { name: 'Name' })),
       'Tab must wrap inside the dialog rather than fall out of it'
@@ -103,7 +110,7 @@ test.describe('Modal dialog — focus management', () => {
     await openWithKeyboard(page);
     expect(await isFocused(page.getByRole('textbox', { name: 'Name' }))).toBe(true);
 
-    await page.keyboard.press('Shift+Tab');
+    await pressShiftTab(page);
     expect(
       await isFocused(page.getByRole('button', { name: 'Close dialog' })),
       'Shift+Tab must wrap to the end of the dialog, not out to the page'
@@ -117,7 +124,7 @@ test.describe('Modal dialog — focus management', () => {
     // be dialog content; the trigger behind the backdrop must never come up.
     const visited = [];
     for (let i = 0; i <= TAB_RING.length; i += 1) {
-      await page.keyboard.press('Tab');
+      await pressTab(page);
       const info = await activeElementInfo(page);
       visited.push(info.label || info.text);
     }
@@ -149,8 +156,8 @@ test.describe('Modal dialog — closing', () => {
     await openWithKeyboard(page);
 
     // Escape has to work wherever focus happens to be, not only on the dialog.
-    await page.keyboard.press('Tab');
-    await page.keyboard.press('Tab');
+    await pressTab(page);
+    await pressTab(page);
     expect(await isFocused(page.getByRole('button', { name: 'Save' }))).toBe(true);
 
     await page.keyboard.press('Escape');

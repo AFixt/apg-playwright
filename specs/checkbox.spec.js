@@ -9,7 +9,7 @@
  *   checkbox-displaying-states
  */
 const { test, expect } = require('@playwright/test');
-const { gotoPattern, tabUntilFocused, isFocused } = require('./support/apg');
+const { gotoPattern, tabUntilFocused, isFocused, pressTab } = require('./support/apg');
 
 const AGREE = 'I agree to the terms';
 const GROUP = 'Newsletter Preferences';
@@ -79,11 +79,11 @@ test.describe('Checkbox — roles, states, and properties', () => {
     const presses = await tabUntilFocused(page, agree);
     expect(presses, 'the first checkbox must be reachable by Tab').toBeGreaterThan(0);
 
-    await page.keyboard.press('Tab');
+    await pressTab(page);
     expect(await isFocused(all), 'Tab should reach All').toBe(true);
-    await page.keyboard.press('Tab');
+    await pressTab(page);
     expect(await isFocused(weekly), 'Tab should reach Weekly digest').toBe(true);
-    await page.keyboard.press('Tab');
+    await pressTab(page);
     expect(await isFocused(product), 'Tab should reach Product updates').toBe(true);
   });
 });

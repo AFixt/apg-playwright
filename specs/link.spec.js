@@ -20,7 +20,13 @@
  *     only assert that nothing happened — an assertion that cannot fail.
  */
 const { test, expect } = require('@playwright/test');
-const { gotoPattern, tabUntilFocused, isFocused } = require('./support/apg');
+const {
+  gotoPattern,
+  tabUntilFocused,
+  isFocused,
+  pressShiftTab,
+  pressTab,
+} = require('./support/apg');
 
 const LINKS = [
   { name: 'Documentation', href: '/docs' },
@@ -49,13 +55,13 @@ test.describe('Link — roles and accessible names', () => {
   test('Tab visits the links in document order', async ({ page }) => {
     await tabUntilFocused(page, page.getByRole('link', { name: 'Documentation' }));
 
-    await page.keyboard.press('Tab');
+    await pressTab(page);
     expect(await isFocused(page.getByRole('link', { name: 'Home', exact: true }))).toBe(true);
 
-    await page.keyboard.press('Tab');
+    await pressTab(page);
     expect(await isFocused(page.getByRole('link', { name: 'Company logo' }))).toBe(true);
 
-    await page.keyboard.press('Shift+Tab');
+    await pressShiftTab(page);
     expect(await isFocused(page.getByRole('link', { name: 'Home', exact: true }))).toBe(true);
   });
 

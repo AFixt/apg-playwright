@@ -8,7 +8,13 @@
  *   accordion-keyboard-navigation, accordion-multi-panel-expansion
  */
 const { test, expect } = require('@playwright/test');
-const { gotoPattern, tabUntilFocused, isFocused } = require('./support/apg');
+const {
+  gotoPattern,
+  tabUntilFocused,
+  isFocused,
+  pressShiftTab,
+  pressTab,
+} = require('./support/apg');
 
 const HEADERS = ['Section 1', 'Section 2', 'Section 3'];
 
@@ -146,12 +152,12 @@ test.describe('Accordion — keyboard navigation', () => {
     const third = page.getByRole('button', { name: 'Section 3' });
 
     await tabUntilFocused(page, first);
-    await page.keyboard.press('Tab');
+    await pressTab(page);
     expect(await isFocused(second), 'Tab should reach the second header').toBe(true);
-    await page.keyboard.press('Tab');
+    await pressTab(page);
     expect(await isFocused(third), 'Tab should reach the third header').toBe(true);
 
-    await page.keyboard.press('Shift+Tab');
+    await pressShiftTab(page);
     expect(await isFocused(second), 'Shift+Tab should walk back').toBe(true);
   });
 });

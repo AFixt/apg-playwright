@@ -9,7 +9,13 @@
  *   tooltip-javascript-css-implementation, tooltip-visibility-and-positioning
  */
 const { test, expect } = require('@playwright/test');
-const { gotoPattern, tabUntilFocused, isFocused } = require('./support/apg');
+const {
+  gotoPattern,
+  tabUntilFocused,
+  isFocused,
+  pressShiftTab,
+  pressTab,
+} = require('./support/apg');
 
 // Four triggers, one per placement. The tooltip element for each is created on
 // demand — none of them exist in the DOM until the trigger is hovered or focused.
@@ -116,7 +122,7 @@ test.describe('Tooltip — display on focus', () => {
     await tabUntilFocused(page, top);
     await expect(page.getByText(TOP_TEXT)).toBeVisible();
 
-    await page.keyboard.press('Tab');
+    await pressTab(page);
     expect(await isFocused(right), 'Tab should reach the next trigger').toBe(true);
 
     await expect(page.getByText(TOP_TEXT)).toHaveCount(0);
@@ -130,7 +136,7 @@ test.describe('Tooltip — display on focus', () => {
     await tabUntilFocused(page, top);
     await expectDescribedBy(page, top, TOP_TEXT);
 
-    await page.keyboard.press('Shift+Tab');
+    await pressShiftTab(page);
     expect(await isFocused(top)).toBe(false);
 
     await expect(page.getByText(TOP_TEXT)).toHaveCount(0);
@@ -146,7 +152,7 @@ test.describe('Tooltip — display on focus', () => {
     await tabUntilFocused(page, top);
     await expect(page.locator('[role="tooltip"]')).toHaveCount(1);
 
-    await page.keyboard.press('Tab');
+    await pressTab(page);
     expect(await isFocused(right), 'Tab must skip the tooltip and reach the next trigger').toBe(
       true
     );
@@ -178,7 +184,7 @@ test.describe('Tooltip — dismissal with Escape', () => {
     await page.keyboard.press('Escape');
     await expect(page.getByText(TOP_TEXT)).toHaveCount(0);
 
-    await page.keyboard.press('Tab');
+    await pressTab(page);
     expect(await isFocused(right)).toBe(true);
 
     await tabUntilFocused(page, top);
