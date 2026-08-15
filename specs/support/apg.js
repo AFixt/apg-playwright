@@ -12,12 +12,14 @@
  * fail on Firefox and WebKit. Both are handled here, in the harness, so the
  * assertions in the specs stay as strong as they are on Chromium:
  *
- *   - **A document needs a tab stop after the widget.** Firefox parks focus on
- *     the last tabbable element instead of cycling out through the document,
- *     so on a page whose only tab stop is the widget, "Tab leaves the widget"
- *     reads as "Tab stayed put". `installTabSentinel` appends one focusable
- *     element to `<body>`, outside `#demo-root`, giving every engine a
- *     concrete place for focus to go. No widget markup is touched.
+ *   - **A document needs a tab stop on either side of the widget.** Firefox
+ *     parks focus at whichever end of the tab ring it reaches instead of
+ *     cycling out through the document, so on a page whose only tab stop is
+ *     the widget, "Tab leaves the widget" reads as "Tab stayed put" — and so
+ *     does "Shift+Tab leaves it". `installTabSentinels` brackets `<body>` with
+ *     two focusable elements, outside `#demo-root`, giving every engine a
+ *     concrete place for focus to go in both directions. No widget markup is
+ *     touched.
  *   - **Not every engine puts links in the plain-Tab ring.** WebKit follows the
  *     macOS "full keyboard access" default, where Tab visits form controls only
  *     and <kbd>Option</kbd>+<kbd>Tab</kbd> is what visits everything — which is
@@ -47,29 +49,39 @@ function demoPath(pattern) {
 }
 
 /**
- * Append the harness's tab sentinel to the end of `<body>`.
+ * Bracket `<body>` with the harness's tab sentinels — one before the demo,
+ * one after it.
+ *
+ * Both ends are needed, because Firefox parks focus at whichever end of the
+ * tab ring it reaches. Without the trailing one, "Tab leaves the widget" reads
+ * as "Tab stayed put"; without the leading one, so does "Shift+Tab leaves the
+ * first trigger".
  *
  * A plain `<div tabindex="0">`, deliberately: every engine tested puts one in
  * the tab ring (including WebKit under the macOS keyboard-access default), and
  * it has no ARIA role, so `getByRole(...)` sweeps over the demo — "every button
  * on the page has an accessible name", say — cannot pick it up.
  */
-async function installTabSentinel(page) {
+async function installTabSentinels(page) {
   await page.evaluate((attribute) => {
     if (document.querySelector(`[${attribute}]`)) {
       return;
     }
-    const sentinel = document.createElement('div');
-    sentinel.setAttribute(attribute, 'after');
-    sentinel.setAttribute('tabindex', '0');
-    sentinel.textContent = 'end of demo (test harness)';
-    document.body.append(sentinel);
+    const sentinel = (position, text) => {
+      const el = document.createElement('div');
+      el.setAttribute(attribute, position);
+      el.setAttribute('tabindex', '0');
+      el.textContent = text;
+      return el;
+    };
+    document.body.prepend(sentinel('before', 'start of demo (test harness)'));
+    document.body.append(sentinel('after', 'end of demo (test harness)'));
   }, SENTINEL_ATTRIBUTE);
 }
 
-/** The harness's tab stop, as a locator. */
-function tabSentinel(page) {
-  return page.locator(SENTINEL_SELECTOR);
+/** The harness's tab stops, as locators. */
+function tabSentinel(page, position = 'after') {
+  return page.locator(`[${SENTINEL_ATTRIBUTE}="${position}"]`);
 }
 
 /**
@@ -148,7 +160,7 @@ async function resolveTabKeys(page) {
 async function gotoPattern(page, pattern) {
   await page.goto(demoPath(pattern));
   await page.locator('#demo-root h1').waitFor({ state: 'visible' });
-  await installTabSentinel(page);
+  await installTabSentinels(page);
   await resolveTabKeys(page);
 }
 
@@ -192,10 +204,16 @@ async function pressShiftTab(page) {
  * This is the honest way to assert "a keyboard user can reach this widget".
  * It returns the number of presses so a caller can also assert the control did
  * not swallow the whole tab ring.
+ *
+ * Counting starts from the leading sentinel, which is the first thing in
+ * `<body>` and is not part of the demo. So a returned 1 still means what it
+ * meant before the sentinels existed: this widget is the document's first
+ * real tab stop.
  */
 async function tabUntilFocused(page, locator, max = 25) {
   await page.locator('body').click({ position: { x: 1, y: 1 } });
   await page.keyboard.press('Home');
+  await tabSentinel(page, 'before').evaluate((el) => el.focus());
   for (let i = 1; i <= max; i += 1) {
     await pressTab(page);
     if (await locator.evaluate((el) => el === document.activeElement).catch(() => false)) {
@@ -250,7 +268,7 @@ module.exports = {
   demoPath,
   gotoPattern,
   activeElementInfo,
-  installTabSentinel,
+  installTabSentinels,
   tabSentinel,
   pressTab,
   pressShiftTab,

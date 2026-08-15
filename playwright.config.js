@@ -49,14 +49,14 @@ module.exports = defineConfig({
    *   - WebKit follows the macOS "full keyboard access" default, where Tab
    *     visits form controls only and Option+Tab visits everything, links
    *     included.
-   *   - Firefox parks focus on the last tabbable element rather than cycling
-   *     out through the document, so on a page whose only tab stop is the
-   *     widget, "Tab leaves this widget" read as "Tab stayed put".
+   *   - Firefox parks focus at whichever end of the tab ring it reaches rather
+   *     than cycling out through the document, so on a page whose only tab
+   *     stop is the widget, "Tab leaves this widget" read as "Tab stayed put".
    *
    * Both are handled in `specs/support/apg.js` — by sending the chord the host
-   * engine actually advances focus with, and by giving every demo page a tab
-   * stop after the widget — so no assertion had to be weakened to make the
-   * suite portable. See the comments there, and issue #4.
+   * engine actually advances focus with, and by bracketing every demo page
+   * with a tab stop on either side of the widget — so no assertion had to be
+   * weakened to make the suite portable. See the comments there, and issue #4.
    *
    * `npm test` still runs Chromium alone, because that is the fast inner loop.
    * `npm run test:engines` runs all three.
