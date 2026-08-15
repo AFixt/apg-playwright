@@ -61,6 +61,25 @@ Any implementation that follows the APG should pass these specs unchanged — th
 
 `npm test` runs Chromium. `npm run test:engines` runs all three, and currently reports 21 failures — all of them host tab-model differences rather than defects in the code under test: WebKit omits links from the tab sequence entirely, and Firefox wraps the tab ring without passing through `<body>`. Both break assertions of the form "this composite is a single tab stop". Rather than weaken those assertions — they are the ones that catch roving-tabindex regressions — the reformulation is tracked in [#4](https://github.com/AFixt/apg-playwright/issues/4).
 
+## Repository checks
+
+The suite follows the AFixt standard tooling, so the same commands work here as in the sibling repos:
+
+| Command                  | Checks                                                       |
+| ------------------------ | ------------------------------------------------------------ |
+| `npm run lint`           | ESLint, including the Playwright plugin's spec-hygiene rules |
+| `npm run format:check`   | Prettier                                                     |
+| `npm run markdownlint`   | Markdown                                                     |
+| `npm run dupes`          | jscpd copy/paste detection, failing above 5% duplication     |
+| `npm run license:check`  | Dependency licences against the allow-list                   |
+| `npm run security:audit` | `npm audit` at `high` and above                              |
+| `npm run check`          | lint + format + markdown                                     |
+| `npm run check:all`      | `check` plus duplication and licences                        |
+
+`.github/workflows/ci.yml` runs the linters, the duplication check, `npm audit` and the Chromium suite on every pull request. `.github/workflows/security.yml` runs the slower scans — CodeQL, OSV-Scanner, Semgrep's OWASP Top 10 rules, and the licence check — every Monday. Dependabot opens grouped dependency PRs weekly.
+
+Husky installs a pre-commit hook that runs ESLint, Prettier and markdownlint over staged files. Bypass it with `git commit --no-verify` when you need to.
+
 ## Reading a failure
 
 `test.fail()` marks a spec that asserts correct APG behaviour the component does not yet implement, with the tracking issue named in a comment. Those specs are expected to fail today and will report as _unexpectedly passing_ the moment the underlying bug is fixed — which is the signal to remove the marker. A `test.fail()` is a tracked gap, never a silenced test.

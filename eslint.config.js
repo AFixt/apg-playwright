@@ -19,6 +19,20 @@ module.exports = [
     },
     rules: {
       'no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+      // A stray console.log in a spec ends up in every CI log for the life of
+      // the suite. Warn rather than error so debugging one locally is painless.
+      'no-console': 'warn',
+      'prefer-const': 'error',
+      'no-var': 'error',
+      // Dynamic evaluation. Nothing in a spec suite needs it, and the
+      // `page.evaluate()` callbacks are serialised functions, not strings.
+      'no-eval': 'error',
+      'no-implied-eval': 'error',
+      'no-new-func': 'error',
+      // `getAttribute()` returns `string | null`, so loose equality quietly
+      // conflates a missing attribute with an empty one.
+      eqeqeq: ['error', 'always'],
+      curly: ['error', 'all'],
     },
   },
   {
