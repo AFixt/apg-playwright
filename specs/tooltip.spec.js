@@ -5,8 +5,16 @@
  *
  * Derived from apg-usecases `patterns/tooltip/*.uc.yaml`:
  *   tooltip-accessibility-features, tooltip-display-on-focus,
- *   tooltip-hide-on-focus-loss, tooltip-close-with-escape,
- *   tooltip-javascript-css-implementation, tooltip-visibility-and-positioning
+ *   tooltip-hide-on-focus-loss, tooltip-close-with-escape
+ *
+ * NOTE: The APG Tooltip page is explicitly work-in-progress and has not reached
+ * task force consensus, so this pattern is expected to churn.
+ *
+ * tooltip-javascript-css-implementation and tooltip-visibility-and-positioning
+ * were removed upstream (AFixt/apg-usecases#68) because neither had any basis
+ * in the APG tooltip page — it prescribes no implementation technology and says
+ * nothing about positioning. No test here derived from them, so nothing was
+ * lost. See AFixt/apg-gherkin#77.
  */
 const { test, expect } = require('@playwright/test');
 const {

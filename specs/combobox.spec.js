@@ -201,16 +201,28 @@ test.describe('Combobox — opening and closing the popup', () => {
     expect(await isFocused(combobox)).toBe(true);
   });
 
-  test('Tab closes the popup and moves focus out of the combobox', async ({ page }) => {
+  test('Tab moves focus past the whole widget rather than into the popup', async ({ page }) => {
     const combobox = page.getByRole('combobox', { name: LABEL });
+    const toggle = page.getByRole('button', { name: TOGGLE });
     await tabUntilFocused(page, combobox);
     await page.keyboard.press('ArrowDown');
     await expect(page.getByRole('listbox')).toBeVisible();
 
     await pressTab(page);
+
+    // What the APG actually requires: the combobox is in the page Tab sequence,
+    // and "the popup indicator icon or button (if present), the popup, and the
+    // popup descendants are excluded from the page Tab sequence." So a single
+    // Tab has to carry focus past the entire widget.
+    expect(await isFocused(combobox), 'Tab must move focus out of the combobox').toBe(false);
+    expect(await isFocused(toggle), 'Tab must not land on the popup toggle button').toBe(false);
+
+    // Example-specific, NOT an APG requirement. This demo also closes the popup
+    // when focus leaves; an implementation that keeps it open while focus moves
+    // past the widget still conforms. Drop these two lines when running against
+    // an implementation that does so. See AFixt/apg-gherkin#73.
     await expect(combobox).toHaveAttribute('aria-expanded', 'false');
     await expect(page.getByRole('listbox')).toHaveCount(0);
-    expect(await isFocused(combobox), 'Tab must move focus out of the combobox').toBe(false);
   });
 });
 
