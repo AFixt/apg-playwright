@@ -39,6 +39,14 @@ npx playwright install
 npm test
 ```
 
+> **If Firefox fails every navigation with `NS_ERROR_NET_RESET`, the demo
+> server is bound to IPv6 only.** `vite preview` binds `localhost` to `[::1]`
+> alone unless told otherwise, and Firefox resolves `localhost` to
+> `127.0.0.1`. Chromium tolerates it, so this only shows up once you run
+> `npm run test:engines`. Serve with `--host ::`, or point `APG_BASE_URL` at a
+> dual-stack address. The same applies if something else already holds IPv4
+> port 8080 — Docker Desktop's proxy is a common culprit.
+
 ### Pointing the suite at your own application
 
 Set `APG_BASE_URL` to a server that exposes one page per pattern at `/demos/<pattern>.html`:

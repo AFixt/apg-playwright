@@ -135,6 +135,7 @@ test.describe('Treegrid — expanding and collapsing', () => {
   test('Right Arrow on a cell that is not the right-most moves focus one cell right', async ({
     page,
   }) => {
+    // KNOWN BUG — apg-react#165.
     // APG Right Arrow: "If focus is on any other cell, moves focus one cell to
     // the right." The row-level exceptions above it in that table ("if focus is
     // on a collapsed row, expands the row") apply when focus is on the *row*,
