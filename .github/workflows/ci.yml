@@ -19,6 +19,11 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
+      # Deliberately unpinned. apg-react is the system under test, not a build
+      # input: this suite exists to notice when its default branch stops
+      # following the APG, so it tracks that branch rather than a fixed ref.
+      # The cost is real — an upstream commit can turn this run red with no
+      # change here — and that is the intended signal, not a flake to pin away.
       - name: Check out apg-react (serves the demo pages under test)
         uses: actions/checkout@v6
         with:
@@ -46,7 +51,12 @@ jobs:
         run: |
           npm ci
           npm run demos:build
-          npx vite preview --config vite.demos.config.mjs &
+          # `--host ::` is load-bearing: vite preview otherwise binds localhost
+          # to [::1] alone, and Firefox resolves localhost to 127.0.0.1, so
+          # every navigation fails with NS_ERROR_NET_RESET. Chromium tolerates
+          # the IPv6-only bind, which is why this only surfaced once the run
+          # covered all three engines.
+          npx vite preview --config vite.demos.config.mjs --host :: &
           for i in $(seq 1 60); do
             if curl -sf -o /dev/null http://localhost:8080/demos/accordion.html; then
               echo "demo server up after ${i}s"; exit 0
@@ -71,8 +81,13 @@ jobs:
       - name: npm audit
         run: npm run security:audit
 
-      - name: Playwright tests
-        run: npm test
+      # All three engines, not just the Chromium default. The harness carries
+      # engine-specific code — the Option+Tab chord WebKit needs, the sentinels
+      # Firefox needs — and Chromium exercises none of it, so a Chromium-only
+      # gate would let those paths rot unnoticed. The browsers are already
+      # installed above, so the extra cost is the run time.
+      - name: Playwright tests (Chromium, Firefox, WebKit)
+        run: npm run test:engines
 
       - name: Upload report
         if: ${{ !cancelled() }}
