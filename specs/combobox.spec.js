@@ -15,7 +15,18 @@ const { test, expect } = require('@playwright/test');
 const { gotoPattern, tabUntilFocused, isFocused, pressTab } = require('./support/apg');
 
 const LABEL = 'Country';
-const TOGGLE = 'Open suggestions';
+
+/**
+ * The popup toggle, matched in either state.
+ *
+ * It renames itself as the popup opens and closes — "Open suggestions" when
+ * closed, "Close suggestions" when open — so a locator pinned to one name
+ * silently resolves nothing the moment the popup is showing. That matters most
+ * in the one assertion that runs with the popup open: `isFocused` on a locator
+ * matching zero elements does not report `false`, it waits for an element that
+ * will never arrive and fails the test on a timeout naming nothing useful.
+ */
+const toggleButton = (page) => page.getByRole('button', { name: /^(Open|Close) suggestions$/ });
 
 // The popup does not exist in the DOM until the combobox is opened, so every
 // option assertion below has to follow an interaction.
@@ -90,7 +101,7 @@ test.describe('Combobox — roles, states, and properties', () => {
     page,
   }) => {
     const combobox = page.getByRole('combobox', { name: LABEL });
-    const toggle = page.getByRole('button', { name: TOGGLE });
+    const toggle = toggleButton(page);
 
     await expect(toggle).toHaveAttribute('tabindex', '-1');
 
@@ -203,7 +214,7 @@ test.describe('Combobox — opening and closing the popup', () => {
 
   test('Tab moves focus past the whole widget rather than into the popup', async ({ page }) => {
     const combobox = page.getByRole('combobox', { name: LABEL });
-    const toggle = page.getByRole('button', { name: TOGGLE });
+    const toggle = toggleButton(page);
     await tabUntilFocused(page, combobox);
     await page.keyboard.press('ArrowDown');
     await expect(page.getByRole('listbox')).toBeVisible();
