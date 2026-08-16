@@ -19,12 +19,16 @@ The suite runs against the APG pattern demo pages published by [`AFixt/apg-react
 Start the demo server in one terminal:
 
 ```sh
-git clone https://github.com/AFixt/apg-react.git
+git clone --branch develop https://github.com/AFixt/apg-react.git
 cd apg-react
 nvm use 22 && npm ci   # NOT `nvm use` — see the note below
 npm run serve          # serves http://localhost:8080/demos/<pattern>.html
 ```
 
+> **Clone `develop`, not the default branch.** The demo pages and the `serve`
+> script live on apg-react's `develop` branch and have not reached `main` yet,
+> so a plain `git clone` lands on a checkout with no `npm run serve` at all.
+>
 > **Use Node 22 for apg-react, not its `.nvmrc`.** That repo pins `.nvmrc` to
 > `20` while its `package.json` requires `>=22.13.0` with `engine-strict=true`,
 > so the documented `nvm use && npm ci` fails with `EBADENGINE`. Tracked as
@@ -38,6 +42,14 @@ nvm use && npm ci
 npx playwright install
 npm test
 ```
+
+> **If Firefox fails every navigation with `NS_ERROR_NET_RESET`, the demo
+> server is bound to IPv6 only.** `vite preview` binds `localhost` to `[::1]`
+> alone unless told otherwise, and Firefox resolves `localhost` to
+> `127.0.0.1`. Chromium tolerates it, so this only shows up once you run
+> `npm run test:engines`. Serve with `--host ::`, or point `APG_BASE_URL` at a
+> dual-stack address. The same applies if something else already holds IPv4
+> port 8080 — Docker Desktop's proxy is a common culprit.
 
 ### Pointing the suite at your own application
 

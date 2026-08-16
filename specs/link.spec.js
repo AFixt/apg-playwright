@@ -99,7 +99,11 @@ test.describe('Link — activation', () => {
     await tabUntilFocused(page, link);
     await page.keyboard.press('Enter');
 
-    await expect(page).toHaveURL(/localhost:\d+\/$/);
+    // Asserted relative to the configured baseURL rather than a hardcoded
+    // localhost pattern, so the spec still holds when the suite is pointed at
+    // another origin with APG_BASE_URL — which the README documents as a
+    // supported workflow, and which its own IPv6 note recommends.
+    await expect(page).toHaveURL('/');
   });
 
   test('clicking a link navigates to the same target as the keyboard does', async ({ page }) => {

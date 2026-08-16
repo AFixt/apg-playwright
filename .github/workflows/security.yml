@@ -35,10 +35,21 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+      # Pinned and checksum-verified. `latest` fetched an unverified binary and
+      # ran it as root in the one job whose whole purpose is supply-chain
+      # assurance — the weakest link in the pipeline was the scanner itself.
+      # Dependabot does not track this, so bump OSV_VERSION by hand.
       - name: Install OSV-Scanner
+        env:
+          OSV_VERSION: v2.5.0
         run: |
-          curl -sSL -o /tmp/osv-scanner \
-            https://github.com/google/osv-scanner/releases/latest/download/osv-scanner_linux_amd64
+          base="https://github.com/google/osv-scanner/releases/download/${OSV_VERSION}"
+          curl -fsSL -o /tmp/osv-scanner "${base}/osv-scanner_linux_amd64"
+          curl -fsSL -o /tmp/osv-scanner_SHA256SUMS "${base}/osv-scanner_SHA256SUMS"
+          # The published sums cover every platform build; check only ours.
+          grep ' osv-scanner_linux_amd64$' /tmp/osv-scanner_SHA256SUMS \
+            | sed 's#osv-scanner_linux_amd64#/tmp/osv-scanner#' \
+            | sha256sum --check --strict
           chmod +x /tmp/osv-scanner
           sudo mv /tmp/osv-scanner /usr/local/bin/osv-scanner
       - run: osv-scanner --lockfile=package-lock.json

@@ -34,7 +34,6 @@ const { expect } = require('@playwright/test');
 
 /** Marks the harness's own tab stop. Not part of any pattern under test. */
 const SENTINEL_ATTRIBUTE = 'data-apg-tab-sentinel';
-const SENTINEL_SELECTOR = `[${SENTINEL_ATTRIBUTE}]`;
 
 /**
  * Which key advances sequential focus, per engine. Resolved once per worker by
@@ -61,6 +60,10 @@ function demoPath(pattern) {
  * the tab ring (including WebKit under the macOS keyboard-access default), and
  * it has no ARIA role, so `getByRole(...)` sweeps over the demo — "every button
  * on the page has an accessible name", say — cannot pick it up.
+ *
+ * The visible text is deliberate too. These show up in failure screenshots,
+ * and a labelled element beats an anonymous empty one when you are trying to
+ * work out why focus landed where it did.
  */
 async function installTabSentinels(page) {
   await page.evaluate((attribute) => {
@@ -211,6 +214,10 @@ async function pressShiftTab(page) {
  * real tab stop.
  */
 async function tabUntilFocused(page, locator, max = 25) {
+  // Re-install rather than assume: a spec that navigates mid-test lands on a
+  // fresh document with no sentinels, and waiting for one that will never
+  // arrive turns a clear failure into a 30-second timeout. Idempotent.
+  await installTabSentinels(page);
   await page.locator('body').click({ position: { x: 1, y: 1 } });
   await page.keyboard.press('Home');
   await tabSentinel(page, 'before').evaluate((el) => el.focus());
@@ -244,10 +251,17 @@ async function isFocused(locator) {
 async function expectTabExits(page, container, message) {
   await pressTab(page);
 
-  const stillRendered = (await container.count()) > 0;
-  const inside = stillRendered
-    ? await container.evaluate((el) => el.contains(document.activeElement))
-    : false;
+  // Two or more matches is a bug in the caller's locator, not a widget defect.
+  // Left to `evaluate`, it surfaces as an opaque strict-mode violation naming
+  // neither the widget nor the assertion, so name it here instead.
+  const matches = await container.count();
+  expect(
+    matches,
+    `${message} — the container locator matched ${matches} elements; expected the one widget, or none if Tab dismissed it`
+  ).toBeLessThanOrEqual(1);
+
+  const inside =
+    matches === 1 ? await container.evaluate((el) => el.contains(document.activeElement)) : false;
   const onBody = await page.evaluate(
     () => !document.activeElement || document.activeElement === document.body
   );
@@ -264,17 +278,18 @@ async function tabindexes(locator) {
   return locator.evaluateAll((els) => els.map((el) => el.getAttribute('tabindex')));
 }
 
+// The sentinel plumbing — installTabSentinels and tabSentinel — stays
+// module-private. `gotoPattern` and `tabUntilFocused` are the only
+// callers, and a spec that reaches for the sentinels directly is a spec
+// asserting something about the harness rather than about the widget.
 module.exports = {
   demoPath,
   gotoPattern,
   activeElementInfo,
-  installTabSentinels,
-  tabSentinel,
   pressTab,
   pressShiftTab,
   tabUntilFocused,
   isFocused,
   expectTabExits,
   tabindexes,
-  SENTINEL_SELECTOR,
 };
