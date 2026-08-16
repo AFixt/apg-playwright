@@ -1,128 +1,163 @@
+// @ts-check
 /**
- * Notes:
- * 
- * This is a sample test file for testing accordions. You can use this as a template for your own tests.
- * 
- * Replace the following values with the actual IDs of the accordion elements:
- * - accordion-header-1
- * - accordion-header-2
- * - accordion-header-last
- * - accordion-panel-1
- * - accordion-panel-2
- * - accordion-panel-last
- * - expected-next-focus-element-id
- * - expected-previous-focus-element-id
- * 
- * Replace the startLocation with the actual URL of the page where the accordion is to be found for testing
+ * APG Accordion Pattern
+ * https://www.w3.org/WAI/ARIA/apg/patterns/accordion/
+ *
+ * Derived from apg-usecases `patterns/accordion/*.uc.yaml`:
+ *   accordion-aria-roles-and-states, accordion-expand-collapse,
+ *   accordion-keyboard-navigation, accordion-multi-panel-expansion
  */
+const { test, expect } = require('@playwright/test');
+const {
+  gotoPattern,
+  tabUntilFocused,
+  isFocused,
+  pressShiftTab,
+  pressTab,
+} = require('./support/apg');
 
-const { test, expect } = require("@playwright/test");
+const HEADERS = ['Section 1', 'Section 2', 'Section 3'];
 
-const startLocation = "https://yourwebsite.com/accordion";
+test.beforeEach(async ({ page }) => {
+  await gotoPattern(page, 'accordion');
+});
 
-test.describe("Expanding and Collapsing Accordion Panels", () => {
-  test.beforeEach(async ({ page }) => {
-    await page.goto(startLocation);
+test.describe('Accordion — roles, states, and properties', () => {
+  test('each header is a button wrapped in a heading and points at its panel', async ({ page }) => {
+    for (const name of HEADERS) {
+      // The APG requires the button to be wrapped in a heading so that screen
+      // reader users can navigate the accordion by heading.
+      const heading = page.getByRole('heading', { name });
+      await expect(heading).toBeVisible();
+      const button = heading.getByRole('button', { name });
+      await expect(button).toBeVisible();
+
+      await expect(button).toHaveAttribute('aria-expanded', 'false');
+      // aria-controls must be present and non-empty...
+      await expect(button).toHaveAttribute('aria-controls', /\S/);
+      const controls = await button.getAttribute('aria-controls');
+
+      // ...and must resolve to a real element, not a dangling id.
+      const panel = page.locator(`#${controls}`);
+      await expect(panel).toHaveCount(1);
+      // Collapsed means genuinely not perceivable, not just aria-expanded=false.
+      await expect(panel).toBeHidden();
+    }
   });
 
-  test("should expand and collapse accordion panels appropriately", async ({ page }) => {
-    // Check if the first panel is collapsed initially
-    await expect(page.locator("#accordion-panel-1")).toBeHidden();
+  test('each panel is a region labelled by its own header', async ({ page }) => {
+    const button = page.getByRole('button', { name: 'Section 1' });
+    await button.click();
 
-    // Expand the first panel and check if it's visible
-    await page.click("#accordion-header-1");
-    await expect(page.locator("#accordion-panel-1")).toBeVisible();
-
-    // Optionally, check if other panels are collapsed (if only one panel is allowed)
-    await expect(page.locator("#accordion-panel-2")).toBeHidden();
-
-    // Collapse the first panel and check if it's hidden
-    await page.click("#accordion-header-1");
-    await expect(page.locator("#accordion-panel-1")).toBeHidden();
+    const panel = page.getByRole('region', { name: 'Section 1' });
+    await expect(panel).toBeVisible();
+    await expect(panel).toHaveAttribute('aria-labelledby', await button.evaluate((el) => el.id));
   });
 });
 
-test.describe("Keyboard Navigation within the Accordion", () => {
-  test.beforeEach(async ({ page }) => {
-    await page.goto(startLocation);
-    await page.focus("#accordion-header-1");
+test.describe('Accordion — expanding and collapsing', () => {
+  test('Enter on a collapsed header expands its panel', async ({ page }) => {
+    const button = page.getByRole('button', { name: 'Section 1' });
+    const panel = page.locator('#panel-0');
+
+    await expect(button).toHaveAttribute('aria-expanded', 'false');
+    await expect(panel).toBeHidden();
+
+    await tabUntilFocused(page, button);
+    await page.keyboard.press('Enter');
+
+    await expect(button).toHaveAttribute('aria-expanded', 'true');
+    await expect(panel).toBeVisible();
   });
 
-  test("should allow keyboard navigation", async ({ page }) => {
-    // Test 'Tab' key navigation
-    await page.keyboard.press("Tab");
-    // Verify that focus has moved to the next element
-    await expect(page.locator(":focus")).toHaveId("expected-next-focus-element-id");
+  test('Space on an expanded header collapses its panel again', async ({ page }) => {
+    const button = page.getByRole('button', { name: 'Section 2' });
+    const panel = page.locator('#panel-1');
 
-    // Test 'Shift+Tab' key navigation
-    await page.keyboard.press("Shift+Tab");
-    // Verify that focus has moved to the previous element
-    await expect(page.locator(":focus")).toHaveId("expected-previous-focus-element-id");
+    await tabUntilFocused(page, button);
+    await page.keyboard.press('Space');
+    await expect(button).toHaveAttribute('aria-expanded', 'true');
+    await expect(panel).toBeVisible();
 
-    // Test 'Down Arrow' key navigation
-    await page.keyboard.press("ArrowDown");
-    // Verify that focus has moved to the next accordion header
-    await expect(page.locator(":focus")).toHaveId("accordion-header-2");
-
-    // Test 'Up Arrow' key navigation
-    await page.keyboard.press("ArrowUp");
-    // Verify that focus has moved to the previous accordion header
-    await expect(page.locator(":focus")).toHaveId("accordion-header-1");
-
-    // Test 'Home' key navigation
-    await page.keyboard.press("Home");
-    // Verify that focus has moved to the first accordion header
-    await expect(page.locator(":focus")).toHaveId("accordion-header-1");
-
-    // Test 'End' key navigation
-    await page.keyboard.press("End");
-    // Verify that focus has moved to the last accordion header
-    await expect(page.locator(":focus")).toHaveId("accordion-header-last"); // Replace with the actual ID of the last header
-  });
-});
-
-test.describe("ARIA Roles, States, and Properties of Accordion Elements", () => {
-  test.beforeEach(async ({ page }) => {
-    await page.goto(startLocation);
+    await page.keyboard.press('Space');
+    await expect(button).toHaveAttribute('aria-expanded', 'false');
+    await expect(panel).toBeHidden();
   });
 
-  test("should have appropriate ARIA attributes", async ({ page }) => {
-    // Check ARIA roles, states, and properties
-    const header = page.locator("#accordion-header-1");
-    await expect(header).toHaveAttribute("role", "button");
-    await expect(header).toHaveAttribute("aria-expanded", /true|false/);
-    await expect(header).toHaveAttribute("aria-controls", "accordion-panel-1");
+  test('expanding one panel collapses the previously expanded panel', async ({ page }) => {
+    // This demo implements the APG's single-expansion variant.
+    const first = page.getByRole('button', { name: 'Section 1' });
+    const second = page.getByRole('button', { name: 'Section 2' });
 
-    // Check the 'heading' role and 'aria-level'
-    const heading = page.locator("#accordion-header-1 >> xpath=ancestor::heading");
-    await expect(heading).toHaveAttribute("role", "heading");
-    await expect(heading).toHaveAttribute("aria-level", /\d+/);
+    await first.click();
+    await expect(first).toHaveAttribute('aria-expanded', 'true');
 
-    // Check for 'aria-disabled' if a panel cannot be collapsed
-    // await expect(header).toHaveAttribute('aria-disabled', 'true');
-
-    // Optionally, check for 'region' role in accordion panel
-    // const panel = page.locator('#accordion-panel-1');
-    // await expect(panel).toHaveAttribute('role', 'region');
+    await second.click();
+    await expect(second).toHaveAttribute('aria-expanded', 'true');
+    await expect(first).toHaveAttribute('aria-expanded', 'false');
+    await expect(page.locator('#panel-0')).toBeHidden();
+    await expect(page.locator('#panel-1')).toBeVisible();
   });
 });
 
-// This test is only applicable if the accordion has multiple expandable panels
-test.describe("Handling Accordions with Multiple Expandable Panels", () => {
-  test.beforeEach(async ({ page }) => {
-    await page.goto(startLocation);
+test.describe('Accordion — keyboard navigation', () => {
+  test('the accordion is reachable with Tab and headers are in the tab ring', async ({ page }) => {
+    const first = page.getByRole('button', { name: 'Section 1' });
+    const presses = await tabUntilFocused(page, first);
+    expect(presses, 'first accordion header must be reachable by Tab').toBeGreaterThan(0);
   });
 
-  test("should handle multiple expandable panels correctly", async ({ page }) => {
-    // Expand multiple panels
-    await page.click("#accordion-header-1");
-    await page.click("#accordion-header-2");
+  test('Down Arrow moves focus to the next header and Up Arrow moves back', async ({ page }) => {
+    const first = page.getByRole('button', { name: 'Section 1' });
+    const second = page.getByRole('button', { name: 'Section 2' });
 
-    // Check if multiple panels are visible
-    await expect(page.locator("#accordion-panel-1")).toBeVisible();
-    await expect(page.locator("#accordion-panel-2")).toBeVisible();
+    await tabUntilFocused(page, first);
+    await page.keyboard.press('ArrowDown');
+    expect(await isFocused(second)).toBe(true);
 
-    // Check the use of 'region' role if applicable
-    // await expect(page.locator('#accordion-panel-1')).toHaveAttribute('role', 'region');
+    await page.keyboard.press('ArrowUp');
+    expect(await isFocused(first)).toBe(true);
+  });
+
+  test('Home moves focus to the first header and End to the last', async ({ page }) => {
+    const first = page.getByRole('button', { name: 'Section 1' });
+    const last = page.getByRole('button', { name: 'Section 3' });
+
+    await tabUntilFocused(page, first);
+    await page.keyboard.press('End');
+    expect(await isFocused(last)).toBe(true);
+
+    await page.keyboard.press('Home');
+    expect(await isFocused(first)).toBe(true);
+  });
+
+  test('Down Arrow from the last header wraps to the first', async ({ page }) => {
+    const first = page.getByRole('button', { name: 'Section 1' });
+    const last = page.getByRole('button', { name: 'Section 3' });
+
+    await tabUntilFocused(page, first);
+    await page.keyboard.press('End');
+    expect(await isFocused(last)).toBe(true);
+
+    await page.keyboard.press('ArrowDown');
+    expect(await isFocused(first), 'Down Arrow from the last header should wrap').toBe(true);
+  });
+
+  test('every header is in the page tab sequence', async ({ page }) => {
+    // Unlike most composite widgets, the APG Accordion does NOT use a roving
+    // tabindex: "all focusable elements in the accordion are included in the
+    // page Tab sequence". Arrow keys are an addition to Tab, not a substitute.
+    const first = page.getByRole('button', { name: 'Section 1' });
+    const second = page.getByRole('button', { name: 'Section 2' });
+    const third = page.getByRole('button', { name: 'Section 3' });
+
+    await tabUntilFocused(page, first);
+    await pressTab(page);
+    expect(await isFocused(second), 'Tab should reach the second header').toBe(true);
+    await pressTab(page);
+    expect(await isFocused(third), 'Tab should reach the third header').toBe(true);
+
+    await pressShiftTab(page);
+    expect(await isFocused(second), 'Shift+Tab should walk back').toBe(true);
   });
 });

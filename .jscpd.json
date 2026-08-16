@@ -1,0 +1,14 @@
+{
+  "threshold": 5,
+  "minTokens": 100,
+  "minLines": 8,
+  "maxLines": 1000,
+  "maxSize": "100kb",
+  "reporters": ["console"],
+  "format": ["javascript", "markdown"],
+  "ignore": ["**/node_modules/**", "**/playwright-report/**", "**/test-results/**", "**/*.min.*"],
+  "absolute": false,
+  "gitignore": true,
+  "silent": false,
+  "exitCode": 1
+}

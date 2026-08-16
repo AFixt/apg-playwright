@@ -1,0 +1,14 @@
+#!/usr/bin/env sh
+
+# Lint and format staged files, then scan new history for verified secrets.
+# To bypass (e.g. WIP commits): git commit --no-verify
+
+npx lint-staged || exit 1
+
+# Trufflehog is optional — warn if missing rather than block.
+if command -v trufflehog >/dev/null 2>&1; then
+  trufflehog git file://. --since-commit HEAD --only-verified --fail || exit 1
+else
+  echo "warning: trufflehog not installed — skipping secret scan."
+  echo "         install with 'brew install trufflehog'"
+fi
