@@ -8,7 +8,7 @@
  *   multithumb-slider-maintaining-tab-order, multithumb-slider-user-friendly-value
  */
 const { test, expect } = require('@playwright/test');
-const { gotoPattern, tabUntilFocused, isFocused } = require('./support/apg');
+const { gotoPattern, tabUntilFocused, isFocused, pressTab } = require('./support/apg');
 
 // A price range: two thumbs on one track, each its own role="slider".
 const MIN_THUMB = 'Minimum price';
@@ -206,7 +206,7 @@ test.describe('Multi-thumb slider — tab order', () => {
     const presses = await tabUntilFocused(page, low);
     expect(presses, 'the minimum thumb must be reachable by Tab').toBeGreaterThan(0);
 
-    await page.keyboard.press('Tab');
+    await pressTab(page);
     expect(await isFocused(high), 'Tab should reach the maximum thumb next').toBe(true);
   });
 
@@ -229,7 +229,7 @@ test.describe('Multi-thumb slider — tab order', () => {
       'the minimum thumb must still be the first thumb in the tab ring'
     ).toBeGreaterThan(0);
 
-    await page.keyboard.press('Tab');
+    await pressTab(page);
     expect(await isFocused(high), 'Tab order must not follow the thumbs visual order').toBe(true);
   });
 });

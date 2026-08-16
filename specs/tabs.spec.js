@@ -15,7 +15,14 @@
  *     no per-tab context menu, so Delete and Shift+F10 have nothing to act on.
  */
 const { test, expect } = require('@playwright/test');
-const { gotoPattern, tabUntilFocused, isFocused, tabindexes } = require('./support/apg');
+const {
+  gotoPattern,
+  tabUntilFocused,
+  isFocused,
+  tabindexes,
+  pressShiftTab,
+  pressTab,
+} = require('./support/apg');
 
 const TABS = ['Tab 1', 'Tab 2', 'Tab 3'];
 
@@ -220,10 +227,10 @@ test.describe('Tabs — keyboard navigation', () => {
     // The panel holds only static text, so the APG asks for tabindex="0" on the
     // panel itself; otherwise Tab would skip the content the tab just revealed.
     await expect(panel).toHaveAttribute('tabindex', '0');
-    await page.keyboard.press('Tab');
+    await pressTab(page);
     expect(await isFocused(panel), 'Tab must land inside the active tabpanel').toBe(true);
 
-    await page.keyboard.press('Shift+Tab');
+    await pressShiftTab(page);
     expect(await isFocused(second), 'Shift+Tab must return to the active tab').toBe(true);
   });
 
@@ -232,10 +239,10 @@ test.describe('Tabs — keyboard navigation', () => {
     // thing keeping them out of the tab ring. Losing it would strand a keyboard
     // user inside content that is visually gone.
     await tabUntilFocused(page, page.getByRole('tab', { name: 'Tab 1' }));
-    await page.keyboard.press('Tab');
+    await pressTab(page);
     expect(await isFocused(page.locator('#tabs-panel-1'))).toBe(true);
 
-    await page.keyboard.press('Tab');
+    await pressTab(page);
     expect(
       await isFocused(page.locator('#tabs-panel-2')),
       'a hidden tabpanel must not be focusable'

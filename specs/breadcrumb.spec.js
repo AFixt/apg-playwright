@@ -23,7 +23,13 @@
  *     compare document order against.
  */
 const { test, expect } = require('@playwright/test');
-const { gotoPattern, tabUntilFocused, isFocused } = require('./support/apg');
+const {
+  gotoPattern,
+  pressTab,
+  tabUntilFocused,
+  isFocused,
+  expectTabExits,
+} = require('./support/apg');
 
 const TRAIL = ['Home', 'Library', 'Data'];
 const CURRENT = 'Current Page';
@@ -62,7 +68,7 @@ test.describe('Breadcrumb — structure and naming', () => {
     // Walking the trail with Tab must follow the same order the list declares.
     await tabUntilFocused(page, page.getByRole('link', { name: TRAIL[0] }));
     for (const name of TRAIL.slice(1)) {
-      await page.keyboard.press('Tab');
+      await pressTab(page);
       const crumb = page.getByRole('link', { name });
       expect(await isFocused(crumb), `Tab should reach the ${name} crumb next`).toBe(true);
     }
@@ -102,10 +108,8 @@ test.describe('Breadcrumb — current page', () => {
 
     const last = page.getByRole('link', { name: TRAIL[TRAIL.length - 1] });
     await tabUntilFocused(page, last);
-    await page.keyboard.press('Tab');
 
-    const stillInTrail = await trail(page).evaluate((el) => el.contains(document.activeElement));
-    expect(stillInTrail, 'Tab past the last link must leave the breadcrumb').toBe(false);
+    await expectTabExits(page, trail(page), 'Tab past the last link must leave the breadcrumb');
   });
 });
 

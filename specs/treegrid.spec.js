@@ -17,7 +17,13 @@
  * behaviours, and only the cell half is applicable here.
  */
 const { test, expect } = require('@playwright/test');
-const { gotoPattern, tabUntilFocused, isFocused, tabindexes } = require('./support/apg');
+const {
+  gotoPattern,
+  tabUntilFocused,
+  isFocused,
+  expectTabExits,
+  tabindexes,
+} = require('./support/apg');
 
 const MEMBERS = '[role="treegrid"] [role="gridcell"]';
 
@@ -129,6 +135,9 @@ test.describe('Treegrid — expanding and collapsing', () => {
   test('Right Arrow on a cell that is not the right-most moves focus one cell right', async ({
     page,
   }) => {
+    // KNOWN BUG — apg-react#163. (#165 filed the same defect independently and
+    // was closed as a duplicate; apg-cypress tracks #163 too, so both suites go
+    // red off the same issue when it is fixed.)
     // APG Right Arrow: "If focus is on any other cell, moves focus one cell to
     // the right." The row-level exceptions above it in that table ("if focus is
     // on a collapsed row, expands the row") apply when focus is on the *row*,
@@ -156,11 +165,11 @@ test.describe('Treegrid — keyboard navigation', () => {
     const presses = await tabUntilFocused(page, cell(page, 'Phase 1'));
     expect(presses, 'the treegrid must be reachable by Tab').toBe(1);
 
-    await page.keyboard.press('Tab');
-    await expect(
-      page.locator('[role="treegrid"] *:focus'),
+    await expectTabExits(
+      page,
+      page.locator('[role="treegrid"]'),
       'a second Tab must leave the treegrid, not walk its cells'
-    ).toHaveCount(0);
+    );
   });
 
   test('Down and Up Arrow move between rows in the same column', async ({ page }) => {

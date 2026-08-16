@@ -15,7 +15,13 @@
  * APG, so their absence is a scope decision rather than a defect.
  */
 const { test, expect } = require('@playwright/test');
-const { gotoPattern, tabUntilFocused, isFocused, tabindexes } = require('./support/apg');
+const {
+  gotoPattern,
+  tabUntilFocused,
+  isFocused,
+  expectTabExits,
+  tabindexes,
+} = require('./support/apg');
 
 const HEADER_ROW = 'Q1 Q2 Q3 Q4';
 const FIRST_DATA_ROW = '100 200 300 400';
@@ -92,11 +98,11 @@ test.describe('Grid — keyboard navigation', () => {
     expect(presses, 'the grid must be reachable by Tab').toBe(1);
 
     // A roving-tabindex composite takes one Tab to enter and one to leave.
-    await page.keyboard.press('Tab');
-    await expect(
-      page.locator('[role="grid"] *:focus'),
+    await expectTabExits(
+      page,
+      page.locator('[role="grid"]'),
       'a second Tab must leave the grid rather than walk its cells'
-    ).toHaveCount(0);
+    );
   });
 
   test('Right and Left Arrow move within a row and stop at the row edges', async ({ page }) => {

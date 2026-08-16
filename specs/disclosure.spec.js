@@ -17,7 +17,7 @@
  * in a single pass.
  */
 const { test, expect } = require('@playwright/test');
-const { gotoPattern, tabUntilFocused, isFocused } = require('./support/apg');
+const { gotoPattern, tabUntilFocused, isFocused, pressTab } = require('./support/apg');
 
 const TITLE = 'Click Me';
 const BODY = 'This is the content to be displayed when the disclosure is open.';
@@ -149,7 +149,7 @@ test.describe('Disclosure — keyboard operation', () => {
     await page.keyboard.press('Enter');
     await expect(content).toBeVisible();
 
-    await page.keyboard.press('Tab');
+    await pressTab(page);
 
     const landedInContent = await content.evaluate((el) => el.contains(document.activeElement));
     expect(landedInContent, 'static disclosure content must not be focusable').toBe(false);

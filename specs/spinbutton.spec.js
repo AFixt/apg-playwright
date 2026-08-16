@@ -8,7 +8,7 @@
  *   spinbutton-direct-editing, spinbutton-handling-invalid-input
  */
 const { test, expect } = require('@playwright/test');
-const { gotoPattern, tabUntilFocused, isFocused } = require('./support/apg');
+const { gotoPattern, tabUntilFocused, isFocused, pressTab } = require('./support/apg');
 
 const NAME = 'Quantity';
 const START = 10;
@@ -63,7 +63,7 @@ test.describe('Spinbutton — roles, states, and properties', () => {
     await expect(increase).toHaveAttribute('tabindex', '-1');
     await expect(decrease).toHaveAttribute('tabindex', '-1');
 
-    await page.keyboard.press('Tab');
+    await pressTab(page);
     expect(await isFocused(increase), 'Tab must not land on the Increase button').toBe(false);
     expect(await isFocused(decrease), 'Tab must not land on the Decrease button').toBe(false);
   });

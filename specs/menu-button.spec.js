@@ -15,7 +15,7 @@
  * separately rather than through a shared helper.
  */
 const { test, expect } = require('@playwright/test');
-const { gotoPattern, tabUntilFocused, isFocused } = require('./support/apg');
+const { gotoPattern, tabUntilFocused, isFocused, expectTabExits } = require('./support/apg');
 
 const ITEMS = ['New', 'Open', 'Save', 'Exit'];
 
@@ -194,7 +194,10 @@ test.describe('Menu button — closing the menu', () => {
 
     // Only the focused item is tabbable, so Tab must leave the menu outright
     // rather than walking the remaining items one by one.
-    await page.keyboard.press('Tab');
-    await expect(page.locator('[role="menu"] *:focus')).toHaveCount(0);
+    await expectTabExits(
+      page,
+      page.locator('[role="menu"]'),
+      'Tab must leave the open menu rather than walk its items'
+    );
   });
 });

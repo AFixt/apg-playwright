@@ -16,7 +16,13 @@
  *     the APG only requires one when the application documents it.
  */
 const { test, expect } = require('@playwright/test');
-const { gotoPattern, tabUntilFocused, isFocused, tabindexes } = require('./support/apg');
+const {
+  gotoPattern,
+  tabUntilFocused,
+  isFocused,
+  expectTabExits,
+  tabindexes,
+} = require('./support/apg');
 
 const CONTROLS = ['Bold', 'Italic', 'Underline', 'Strikethrough'];
 
@@ -192,12 +198,10 @@ test.describe('Toolbar — keyboard navigation', () => {
     await page.keyboard.press('ArrowRight');
     expect(await isFocused(page.getByRole('button', { name: 'Italic' }))).toBe(true);
 
-    await page.keyboard.press('Tab');
-    for (const name of CONTROLS) {
-      expect(
-        await isFocused(page.getByRole('button', { name })),
-        `Tab must not land on ${name}`
-      ).toBe(false);
-    }
+    await expectTabExits(
+      page,
+      page.getByRole('toolbar', { name: 'Formatting' }),
+      'Tab must leave the toolbar rather than walk its controls'
+    );
   });
 });

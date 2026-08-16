@@ -19,10 +19,24 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
+      # A branch, deliberately, not a fixed SHA. apg-react is the system under
+      # test, not a build input: this suite exists to notice when it stops
+      # following the APG, so it tracks a moving ref. The cost is real — an
+      # upstream commit can turn this run red with no change here — and that is
+      # the intended signal, not a flake to pin away.
+      #
+      # It has to be `develop` rather than the default branch, though. The demo
+      # server (vite.demos.config.mjs, demos/, the demos:build script) landed on
+      # `develop` and has not reached `main`, so checking out the default branch
+      # gets a tree with no demos at all and the build step below dies with
+      # "Missing script: demos:build" before any test runs. Move this to `main`
+      # once apg-react releases the demos there — tracked as apg-react#168,
+      # which also lists the README change that goes with it.
       - name: Check out apg-react (serves the demo pages under test)
         uses: actions/checkout@v6
         with:
           repository: AFixt/apg-react
+          ref: develop
           path: .apg-react
 
       - uses: actions/setup-node@v6
@@ -46,7 +60,12 @@ jobs:
         run: |
           npm ci
           npm run demos:build
-          npx vite preview --config vite.demos.config.mjs &
+          # `--host ::` is load-bearing: vite preview otherwise binds localhost
+          # to [::1] alone, and Firefox resolves localhost to 127.0.0.1, so
+          # every navigation fails with NS_ERROR_NET_RESET. Chromium tolerates
+          # the IPv6-only bind, which is why this only surfaced once the run
+          # covered all three engines.
+          npx vite preview --config vite.demos.config.mjs --host :: &
           for i in $(seq 1 60); do
             if curl -sf -o /dev/null http://localhost:8080/demos/accordion.html; then
               echo "demo server up after ${i}s"; exit 0
@@ -65,11 +84,19 @@ jobs:
       - name: markdownlint
         run: npm run markdownlint
 
+      - name: Copy/paste detection
+        run: npm run dupes
+
       - name: npm audit
         run: npm run security:audit
 
-      - name: Playwright tests
-        run: npm test
+      # All three engines, not just the Chromium default. The harness carries
+      # engine-specific code — the Option+Tab chord WebKit needs, the sentinels
+      # Firefox needs — and Chromium exercises none of it, so a Chromium-only
+      # gate would let those paths rot unnoticed. The browsers are already
+      # installed above, so the extra cost is the run time.
+      - name: Playwright tests (Chromium, Firefox, WebKit)
+        run: npm run test:engines
 
       - name: Upload report
         if: ${{ !cancelled() }}

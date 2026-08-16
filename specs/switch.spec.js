@@ -21,7 +21,7 @@
  *     there is no description element to resolve.
  */
 const { test, expect } = require('@playwright/test');
-const { gotoPattern, tabUntilFocused, isFocused } = require('./support/apg');
+const { gotoPattern, tabUntilFocused, isFocused, expectTabExits } = require('./support/apg');
 
 const LABEL = 'Notifications';
 
@@ -133,14 +133,10 @@ test.describe('Switch — keyboard operation', () => {
     const control = page.getByRole('switch', { name: LABEL });
     await tabUntilFocused(page, control);
 
-    await page.keyboard.press('Tab');
-
-    expect(await isFocused(control), 'Tab must leave the switch, not land inside it').toBe(false);
-    const landedInsideWidget = await page
-      .locator('.switch-container')
-      .evaluate((el) => el.contains(document.activeElement));
-    expect(landedInsideWidget, 'nothing inside the switch widget may be a second tab stop').toBe(
-      false
+    await expectTabExits(
+      page,
+      page.locator('.switch-container'),
+      'nothing inside the switch widget may be a second tab stop'
     );
   });
 });

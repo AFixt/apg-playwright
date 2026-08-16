@@ -20,7 +20,13 @@
  *     only assert that nothing happened — an assertion that cannot fail.
  */
 const { test, expect } = require('@playwright/test');
-const { gotoPattern, tabUntilFocused, isFocused } = require('./support/apg');
+const {
+  gotoPattern,
+  tabUntilFocused,
+  isFocused,
+  pressShiftTab,
+  pressTab,
+} = require('./support/apg');
 
 const LINKS = [
   { name: 'Documentation', href: '/docs' },
@@ -49,13 +55,13 @@ test.describe('Link — roles and accessible names', () => {
   test('Tab visits the links in document order', async ({ page }) => {
     await tabUntilFocused(page, page.getByRole('link', { name: 'Documentation' }));
 
-    await page.keyboard.press('Tab');
+    await pressTab(page);
     expect(await isFocused(page.getByRole('link', { name: 'Home', exact: true }))).toBe(true);
 
-    await page.keyboard.press('Tab');
+    await pressTab(page);
     expect(await isFocused(page.getByRole('link', { name: 'Company logo' }))).toBe(true);
 
-    await page.keyboard.press('Shift+Tab');
+    await pressShiftTab(page);
     expect(await isFocused(page.getByRole('link', { name: 'Home', exact: true }))).toBe(true);
   });
 
@@ -93,7 +99,11 @@ test.describe('Link — activation', () => {
     await tabUntilFocused(page, link);
     await page.keyboard.press('Enter');
 
-    await expect(page).toHaveURL(/localhost:\d+\/$/);
+    // Asserted relative to the configured baseURL rather than a hardcoded
+    // localhost pattern, so the spec still holds when the suite is pointed at
+    // another origin with APG_BASE_URL — which the README documents as a
+    // supported workflow, and which its own IPv6 note recommends.
+    await expect(page).toHaveURL('/');
   });
 
   test('clicking a link navigates to the same target as the keyboard does', async ({ page }) => {
