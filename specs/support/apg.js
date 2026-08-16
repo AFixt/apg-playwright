@@ -251,10 +251,17 @@ async function isFocused(locator) {
 async function expectTabExits(page, container, message) {
   await pressTab(page);
 
-  const stillRendered = (await container.count()) > 0;
-  const inside = stillRendered
-    ? await container.evaluate((el) => el.contains(document.activeElement))
-    : false;
+  // Two or more matches is a bug in the caller's locator, not a widget defect.
+  // Left to `evaluate`, it surfaces as an opaque strict-mode violation naming
+  // neither the widget nor the assertion, so name it here instead.
+  const matches = await container.count();
+  expect(
+    matches,
+    `${message} — the container locator matched ${matches} elements; expected the one widget, or none if Tab dismissed it`
+  ).toBeLessThanOrEqual(1);
+
+  const inside =
+    matches === 1 ? await container.evaluate((el) => el.contains(document.activeElement)) : false;
   const onBody = await page.evaluate(
     () => !document.activeElement || document.activeElement === document.body
   );
