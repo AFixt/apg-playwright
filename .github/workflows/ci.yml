@@ -19,15 +19,23 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      # Deliberately unpinned. apg-react is the system under test, not a build
-      # input: this suite exists to notice when its default branch stops
-      # following the APG, so it tracks that branch rather than a fixed ref.
-      # The cost is real — an upstream commit can turn this run red with no
-      # change here — and that is the intended signal, not a flake to pin away.
+      # A branch, deliberately, not a fixed SHA. apg-react is the system under
+      # test, not a build input: this suite exists to notice when it stops
+      # following the APG, so it tracks a moving ref. The cost is real — an
+      # upstream commit can turn this run red with no change here — and that is
+      # the intended signal, not a flake to pin away.
+      #
+      # It has to be `develop` rather than the default branch, though. The demo
+      # server (vite.demos.config.mjs, demos/, the demos:build script) landed on
+      # `develop` and has not reached `main`, so checking out the default branch
+      # gets a tree with no demos at all and the build step below dies with
+      # "Missing script: demos:build" before any test runs. Move this to `main`
+      # once apg-react releases the demos there.
       - name: Check out apg-react (serves the demo pages under test)
         uses: actions/checkout@v6
         with:
           repository: AFixt/apg-react
+          ref: develop
           path: .apg-react
 
       - uses: actions/setup-node@v6
