@@ -8,7 +8,7 @@
  *   spinbutton-direct-editing, spinbutton-handling-invalid-input
  */
 const { test, expect } = require('@playwright/test');
-const { gotoPattern, tabUntilFocused, isFocused, pressTab } = require('./support/apg');
+const { gotoPattern, tabUntilFocused, isFocused, pressTab, byId } = require('./support/apg');
 
 const NAME = 'Quantity';
 const START = 10;
@@ -223,7 +223,7 @@ test.describe('Spinbutton — invalid-input messaging', () => {
     );
 
     const describedby = await spinbutton.getAttribute('aria-describedby');
-    await expect(page.locator(`#${describedby}`)).toBeVisible();
+    await expect(byId(page, describedby)).toBeVisible();
   });
 });
 

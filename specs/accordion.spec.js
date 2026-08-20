@@ -14,6 +14,7 @@ const {
   isFocused,
   pressShiftTab,
   pressTab,
+  byId,
 } = require('./support/apg');
 
 const HEADERS = ['Section 1', 'Section 2', 'Section 3'];
@@ -38,7 +39,7 @@ test.describe('Accordion — roles, states, and properties', () => {
       const controls = await button.getAttribute('aria-controls');
 
       // ...and must resolve to a real element, not a dangling id.
-      const panel = page.locator(`#${controls}`);
+      const panel = byId(page, controls);
       await expect(panel).toHaveCount(1);
       // Collapsed means genuinely not perceivable, not just aria-expanded=false.
       await expect(panel).toBeHidden();

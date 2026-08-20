@@ -23,6 +23,7 @@ const {
   isFocused,
   pressShiftTab,
   pressTab,
+  byId,
 } = require('./support/apg');
 
 // Four triggers, one per placement. The tooltip element for each is created on
@@ -49,7 +50,7 @@ async function expectDescribedBy(page, trigger, text) {
   );
 
   const id = await trigger.getAttribute('aria-describedby');
-  const tooltip = page.locator(`#${id}`);
+  const tooltip = byId(page, id);
   await expect(tooltip).toBeVisible();
   await expect(tooltip).toHaveAttribute('role', 'tooltip');
   await expect(tooltip).toHaveText(text);

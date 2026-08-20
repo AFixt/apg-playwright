@@ -22,6 +22,7 @@ const {
   tabindexes,
   pressShiftTab,
   pressTab,
+  byId,
 } = require('./support/apg');
 
 const TABS = ['Tab 1', 'Tab 2', 'Tab 3'];
@@ -61,7 +62,7 @@ test.describe('Tabs — roles, states, and properties', () => {
 
       // aria-controls must resolve to a real node, and the relationship must
       // be reciprocal rather than a dangling id in one direction.
-      const panel = page.locator(`#${controls}`);
+      const panel = byId(page, controls);
       await expect(panel).toHaveAttribute('aria-labelledby', tabId);
       await expect(panel).toHaveAttribute('role', 'tabpanel');
 

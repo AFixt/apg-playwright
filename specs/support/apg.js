@@ -230,6 +230,25 @@ async function tabUntilFocused(page, locator, max = 25) {
   return -1;
 }
 
+/**
+ * Locate an element by its id, without assuming the id is a usable bare CSS
+ * selector.
+ *
+ * `#${id}` breaks the moment an implementation uses an id that is legal in HTML
+ * but not legal unescaped in CSS — and that is not a corner case here. React's
+ * own `useId()` produces ids like `:r0:`, so a perfectly conforming React
+ * implementation would fail these specs with a selector parse error rather than
+ * a meaningful assertion. The suite is published for exactly those
+ * implementations to run against, so it has to survive their ids.
+ *
+ * An attribute selector with a quoted value sidesteps escaping entirely.
+ * `JSON.stringify` supplies the quoting, and the two characters that would
+ * break out of a CSS string — `"` and `\` — are the two it escapes.
+ */
+function byId(page, id) {
+  return page.locator(`[id=${JSON.stringify(id)}]`);
+}
+
 /** True when `locator` is the document's active element. */
 async function isFocused(locator) {
   return locator.evaluate((el) => el === document.activeElement);
@@ -290,6 +309,7 @@ module.exports = {
   pressShiftTab,
   tabUntilFocused,
   isFocused,
+  byId,
   expectTabExits,
   tabindexes,
 };
