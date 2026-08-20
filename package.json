@@ -1,0 +1,48 @@
+{
+  "name": "@afixt/apg-playwright",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Sample Playwright specs for the patterns in the ARIA Authoring Practices Guide",
+  "license": "MIT",
+  "author": "AFixt",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/AFixt/apg-playwright.git"
+  },
+  "type": "commonjs",
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "scripts": {
+    "test": "playwright test --project=chromium",
+    "test:headed": "playwright test --project=chromium --headed",
+    "test:ui": "playwright test --project=chromium --ui",
+    "report": "playwright show-report",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "markdownlint": "markdownlint-cli2 \"**/*.md\" \"#node_modules\"",
+    "markdownlint:fix": "markdownlint-cli2 --fix \"**/*.md\" \"#node_modules\"",
+    "check": "npm run lint && npm run format:check && npm run markdownlint",
+    "check:all": "npm run check && npm run dupes && npm run license:check",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "dupes": "jscpd",
+    "license:check": "license-checker-rseidelsohn --onlyAllow 'MIT;ISC;Apache-2.0;BSD-2-Clause;BSD-3-Clause;0BSD;CC0-1.0;CC-BY-3.0;CC-BY-4.0;Unlicense;Python-2.0;WTFPL;BlueOak-1.0.0' --excludePrivatePackages --summary",
+    "security:audit": "npm audit --audit-level=high",
+    "test:engines": "playwright test",
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.33.0",
+    "@playwright/test": "^1.54.0",
+    "eslint": "^9.33.0",
+    "eslint-plugin-playwright": "^2.2.0",
+    "globals": "^16.3.0",
+    "husky": "^9.1.7",
+    "jscpd": "^4.3.0",
+    "license-checker-rseidelsohn": "^4.4.2",
+    "lint-staged": "^16.4.0",
+    "markdownlint-cli2": "^0.23.2",
+    "prettier": "^3.9.6"
+  }
+}

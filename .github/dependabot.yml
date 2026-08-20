@@ -1,0 +1,49 @@
+version: 2
+updates:
+  # Everything this repo installs is a devDependency — Playwright, ESLint,
+  # Prettier, markdownlint. Nothing ships to a consumer, so minor and patch
+  # updates are safe to take as one PR; majors get their own so a breaking
+  # Playwright release is reviewed on its own merits.
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: '09:00'
+      timezone: America/New_York
+    open-pull-requests-limit: 5
+    # Wait a week before proposing a newly published version. A compromised
+    # release is usually caught and yanked within days, and nothing here is
+    # urgent enough to be worth being the one who finds out first.
+    cooldown:
+      default-days: 7
+    groups:
+      minor-and-patch:
+        patterns: ['*']
+        update-types: ['minor', 'patch']
+    labels:
+      - dependencies
+      - automated
+    assignees:
+      - karlgroves
+    commit-message:
+      prefix: 'chore(deps)'
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    cooldown:
+      default-days: 7
+    groups:
+      actions:
+        patterns: ['*']
+    labels:
+      - dependencies
+      - ci
+    assignees:
+      - karlgroves
+    commit-message:
+      prefix: 'chore(ci)'
