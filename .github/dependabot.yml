@@ -12,6 +12,11 @@ updates:
       time: '09:00'
       timezone: America/New_York
     open-pull-requests-limit: 5
+    # Wait a week before proposing a newly published version. A compromised
+    # release is usually caught and yanked within days, and nothing here is
+    # urgent enough to be worth being the one who finds out first.
+    cooldown:
+      default-days: 7
     groups:
       minor-and-patch:
         patterns: ['*']
@@ -19,6 +24,8 @@ updates:
     labels:
       - dependencies
       - automated
+    assignees:
+      - karlgroves
     commit-message:
       prefix: 'chore(deps)'
 
@@ -28,11 +35,15 @@ updates:
       interval: weekly
       day: monday
     open-pull-requests-limit: 5
+    cooldown:
+      default-days: 7
     groups:
       actions:
         patterns: ['*']
     labels:
       - dependencies
       - ci
+    assignees:
+      - karlgroves
     commit-message:
       prefix: 'chore(ci)'
