@@ -26,9 +26,11 @@ const { gotoPattern, tabUntilFocused, isFocused, activeElementInfo } = require('
 test.beforeEach(async ({ page }) => {
   await gotoPattern(page, 'feed');
   // The first batch arrives asynchronously; nothing below is meaningful until
-  // the feed has settled.
-  await expect(page.getByRole('article')).toHaveCount(5);
+  // the feed has settled. The feed extends itself whenever its end-of-content
+  // sentinel comes into view, so wait for it to be idle and non-empty rather
+  // than for a particular article count — that count is not stable.
   await expect(page.getByRole('feed', { name: 'News' })).toHaveAttribute('aria-busy', 'false');
+  await expect(page.getByRole('article')).not.toHaveCount(0);
 });
 
 /** An article, addressed by the heading text inside it. */
@@ -42,21 +44,21 @@ test.describe('Feed — roles, states, and properties', () => {
   }) => {
     const articles = page.getByRole('article');
 
-    const positions = await articles.evaluateAll((els) =>
-      els.map((el) => el.getAttribute('aria-posinset'))
+    // One pass, so the two lists are guaranteed to describe the same set even
+    // if the feed extends itself between assertions.
+    const set = await articles.evaluateAll((els) =>
+      els.map((el) => ({
+        pos: el.getAttribute('aria-posinset'),
+        size: el.getAttribute('aria-setsize'),
+      }))
     );
-    expect(positions).toEqual(['1', '2', '3', '4', '5']);
+    expect(set.length, 'the first batch must have loaded').toBeGreaterThanOrEqual(5);
 
-    const sizes = await articles.evaluateAll((els) =>
-      els.map((el) => el.getAttribute('aria-setsize'))
-    );
-    expect(sizes, 'every article must agree on how big the feed is').toEqual([
-      '5',
-      '5',
-      '5',
-      '5',
-      '5',
-    ]);
+    expect(set.map((a) => a.pos)).toEqual(set.map((_, i) => String(i + 1)));
+    expect(
+      set.map((a) => a.size),
+      'every article must agree on how big the feed is'
+    ).toEqual(Array(set.length).fill(String(set.length)));
 
     // Position claims are only worth anything if they describe the article a
     // user actually reaches, so land on one and read it back.
@@ -82,9 +84,11 @@ test.describe('Feed — roles, states, and properties', () => {
       });
     });
 
+    // Whatever the feed has settled at, one click must add exactly one article.
+    const before = await articles.count();
     await page.getByRole('button', { name: 'Load more' }).click();
-    await expect(articles).toHaveCount(6);
-    await expect(article(page, 'Article 6')).toBeVisible();
+    await expect(articles).toHaveCount(before + 1);
+    await expect(article(page, `Article ${before + 1}`)).toBeVisible();
 
     expect(
       await page.evaluate(() => window.__busyLog),
@@ -92,24 +96,21 @@ test.describe('Feed — roles, states, and properties', () => {
     ).toEqual(['true', 'false']);
     await expect(feed).toHaveAttribute('aria-busy', 'false');
 
-    const sizes = await articles.evaluateAll((els) =>
-      els.map((el) => el.getAttribute('aria-setsize'))
+    const renumbered = await articles.evaluateAll((els) =>
+      els.map((el) => ({
+        pos: el.getAttribute('aria-posinset'),
+        size: el.getAttribute('aria-setsize'),
+      }))
     );
-    expect(sizes, 'aria-setsize must be updated on every article, not just the new one').toEqual(
-      Array(6).fill('6')
-    );
+    expect(
+      renumbered.map((a) => a.size),
+      'aria-setsize must be updated on every article, not just the new one'
+    ).toEqual(Array(before + 1).fill(String(before + 1)));
 
-    const positions = await articles.evaluateAll((els) =>
-      els.map((el) => el.getAttribute('aria-posinset'))
-    );
-    expect(positions, 'the new article must be numbered on the end of the set').toEqual([
-      '1',
-      '2',
-      '3',
-      '4',
-      '5',
-      '6',
-    ]);
+    expect(
+      renumbered.map((a) => a.pos),
+      'the new article must be numbered on the end of the set'
+    ).toEqual(renumbered.map((_, i) => String(i + 1)));
   });
 
   test('each article is labelled by its own heading', async ({ page }) => {
@@ -162,16 +163,25 @@ test.describe('Feed — keyboard navigation', () => {
   test('Page Down on the last article and Page Up on the first leave focus where it is', async ({
     page,
   }) => {
-    await article(page, 'Article 5').click();
+    // Address the boundary articles by their own headings. `.last()` would
+    // re-resolve on every use, so if the feed extended itself mid-test the
+    // assertion would silently start describing a different article.
+    const titles = await page
+      .getByRole('article')
+      .evaluateAll((els) => els.map((el) => el.querySelector('h1,h2,h3,h4,h5,h6').textContent));
+    const lastTitle = titles[titles.length - 1];
+    const firstTitle = titles[0];
+
+    await article(page, lastTitle).click();
     await page.keyboard.press('PageDown');
-    expect(await isFocused(article(page, 'Article 5')), 'there is no next article to move to').toBe(
+    expect(await isFocused(article(page, lastTitle)), 'there is no next article to move to').toBe(
       true
     );
 
-    await article(page, 'Article 1').click();
+    await article(page, firstTitle).click();
     await page.keyboard.press('PageUp');
     expect(
-      await isFocused(article(page, 'Article 1')),
+      await isFocused(article(page, firstTitle)),
       'there is no previous article to move to'
     ).toBe(true);
   });
