@@ -6,6 +6,10 @@ updates:
   # Playwright release is reviewed on its own merits.
   - package-ecosystem: npm
     directory: /
+    # `develop` is the integration branch; `main` only ever receives merges
+    # from it. Without this, Dependabot targets the default branch and every
+    # bump lands on `main` ahead of `develop`.
+    target-branch: develop
     schedule:
       interval: weekly
       day: monday
@@ -31,6 +35,7 @@ updates:
 
   - package-ecosystem: github-actions
     directory: /
+    target-branch: develop
     schedule:
       interval: weekly
       day: monday

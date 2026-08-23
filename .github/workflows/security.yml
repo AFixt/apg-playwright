@@ -1,11 +1,10 @@
-name: Security (scheduled)
+name: Security (on demand)
 
 # `npm audit` runs on every pull request in ci.yml. This workflow holds the
-# slower scans — the ones worth a weekly run rather than a per-push one.
+# slower scans. It is run by hand: scheduled workflows are not used in AFixt
+# repositories, so there is deliberately no `schedule` trigger here.
 
 on:
-  schedule:
-    - cron: '0 6 * * 1' # Mondays 06:00 UTC
   workflow_dispatch:
 
 concurrency:
