@@ -11,6 +11,20 @@
  * no inner feed whose navigation could be exercised independently.
  *
  * ---------------------------------------------------------------------------
+ * The feed extends itself. This is an infinite-scroll feed: an
+ * IntersectionObserver on the end-of-content sentinel loads another batch
+ * whenever the sentinel is fully in view, and on a viewport the initial batch
+ * does not fill, that happens on its own — no scroll gesture, no "Load more"
+ * click. The article count is therefore never a fixture; it is 5 at first and
+ * grows until the content overflows the viewport, and scrolling the end back
+ * into view (which clicking the last article does) grows it again.
+ *
+ * So nothing here asserts a particular number of articles. The tests assert
+ * the pattern's contract instead: the set is internally consistent at every
+ * snapshot (posinset 1..n, every setsize === n), loading marks the feed busy,
+ * the set grows when its end is reached, and "first"/"last" are derived from
+ * the feed at the moment they are used rather than named. See issue #10.
+ *
  * Entering the feed. The APG's keyboard contract for a feed only applies "when
  * focus is inside the feed", and in this implementation every article carries
  * `tabindex="-1"`, so Tab never reaches one. That is asserted head-on (and
@@ -26,14 +40,49 @@ const { gotoPattern, tabUntilFocused, isFocused, activeElementInfo } = require('
 test.beforeEach(async ({ page }) => {
   await gotoPattern(page, 'feed');
   // The first batch arrives asynchronously; nothing below is meaningful until
-  // the feed has settled.
-  await expect(page.getByRole('article')).toHaveCount(5);
+  // the feed has delivered it. Both checks are needed: `aria-busy` is also
+  // "false" before the first load has even started.
+  await expect(page.getByRole('article')).not.toHaveCount(0);
   await expect(page.getByRole('feed', { name: 'News' })).toHaveAttribute('aria-busy', 'false');
 });
 
-/** An article, addressed by the heading text inside it. */
+/**
+ * An article, addressed by its heading. Matched exactly: once the feed has
+ * grown past nine articles, a substring match on "Article 1" would also pick
+ * up "Article 10" and the locator would stop being unique.
+ */
 function article(page, title) {
-  return page.getByRole('article').filter({ hasText: title });
+  return page
+    .getByRole('article')
+    .filter({ has: page.getByRole('heading', { name: title, exact: true }) });
+}
+
+/**
+ * One consistent snapshot of every article's `aria-posinset` / `aria-setsize`.
+ * Read in a single `evaluateAll` so the numbers all come from the same render,
+ * not from before and after a batch landed.
+ */
+function readSetNumbering(articles) {
+  return articles.evaluateAll((els) => ({
+    count: els.length,
+    positions: els.map((el) => el.getAttribute('aria-posinset')),
+    sizes: els.map((el) => el.getAttribute('aria-setsize')),
+  }));
+}
+
+/**
+ * The APG's contract for a feed of `n` articles: positions run 1..n and every
+ * article agrees that the set is `n` long. Holds at every size, so it can be
+ * checked whenever the feed happens to be, without knowing how big it is.
+ */
+function expectConsistentNumbering({ count, positions, sizes }) {
+  expect(count, 'the feed must hold at least one article').toBeGreaterThan(0);
+  expect(positions, 'aria-posinset must number the articles 1..n in order').toEqual(
+    Array.from({ length: count }, (_, i) => String(i + 1))
+  );
+  expect(sizes, 'every article must agree on how big the feed is').toEqual(
+    Array(count).fill(String(count))
+  );
 }
 
 test.describe('Feed — roles, states, and properties', () => {
@@ -42,21 +91,7 @@ test.describe('Feed — roles, states, and properties', () => {
   }) => {
     const articles = page.getByRole('article');
 
-    const positions = await articles.evaluateAll((els) =>
-      els.map((el) => el.getAttribute('aria-posinset'))
-    );
-    expect(positions).toEqual(['1', '2', '3', '4', '5']);
-
-    const sizes = await articles.evaluateAll((els) =>
-      els.map((el) => el.getAttribute('aria-setsize'))
-    );
-    expect(sizes, 'every article must agree on how big the feed is').toEqual([
-      '5',
-      '5',
-      '5',
-      '5',
-      '5',
-    ]);
+    expectConsistentNumbering(await readSetNumbering(articles));
 
     // Position claims are only worth anything if they describe the article a
     // user actually reaches, so land on one and read it back.
@@ -82,34 +117,28 @@ test.describe('Feed — roles, states, and properties', () => {
       });
     });
 
+    const before = await articles.count();
     await page.getByRole('button', { name: 'Load more' }).click();
-    await expect(articles).toHaveCount(6);
-    await expect(article(page, 'Article 6')).toBeVisible();
-
-    expect(
-      await page.evaluate(() => window.__busyLog),
-      'the feed must announce itself busy for the duration of the load'
-    ).toEqual(['true', 'false']);
+    await expect
+      .poll(() => articles.count(), { message: 'reaching the end of the feed must load more' })
+      .toBeGreaterThan(before);
     await expect(feed).toHaveAttribute('aria-busy', 'false');
 
-    const sizes = await articles.evaluateAll((els) =>
-      els.map((el) => el.getAttribute('aria-setsize'))
-    );
-    expect(sizes, 'aria-setsize must be updated on every article, not just the new one').toEqual(
-      Array(6).fill('6')
-    );
+    // The observer may have caught more than one batch if the feed was still
+    // auto-extending, so check the shape of the log rather than its length:
+    // it must start by going busy, alternate cleanly, and end not busy.
+    const busyLog = await page.evaluate(() => window.__busyLog);
+    expect(busyLog[0], 'the feed must announce itself busy when a load starts').toBe('true');
+    expect(busyLog.at(-1), 'the feed must clear aria-busy once the load completes').toBe('false');
+    expect(
+      busyLog.filter((state, i) => state === busyLog[i - 1]),
+      'aria-busy must alternate true/false, one pair per batch'
+    ).toEqual([]);
 
-    const positions = await articles.evaluateAll((els) =>
-      els.map((el) => el.getAttribute('aria-posinset'))
-    );
-    expect(positions, 'the new article must be numbered on the end of the set').toEqual([
-      '1',
-      '2',
-      '3',
-      '4',
-      '5',
-      '6',
-    ]);
+    // Every article, not just the new ones, must have been renumbered.
+    const after = await readSetNumbering(articles);
+    expect(after.count).toBeGreaterThan(before);
+    expectConsistentNumbering(after);
   });
 
   test('each article is labelled by its own heading', async ({ page }) => {
@@ -159,21 +188,31 @@ test.describe('Feed — keyboard navigation', () => {
     expect(await isFocused(article(page, 'Article 2'))).toBe(true);
   });
 
-  test('Page Down on the last article and Page Up on the first leave focus where it is', async ({
+  test('Page Down on the last article and Page Up on the first leave focus in place', async ({
     page,
   }) => {
-    await article(page, 'Article 5').click();
-    await page.keyboard.press('PageDown');
-    expect(await isFocused(article(page, 'Article 5')), 'there is no next article to move to').toBe(
-      true
-    );
+    const articles = page.getByRole('article');
 
-    await article(page, 'Article 1').click();
+    // Clicking the last article scrolls it into view, which brings the
+    // end-of-content sentinel into view too and very likely loads another
+    // batch. So "the last article" cannot be named up front; assert the
+    // contract instead — after Page Down, focus is on whichever article is
+    // last *now* — and read that from the article's own numbering.
+    await articles.last().click();
+    await page.keyboard.press('PageDown');
+
+    const info = await activeElementInfo(page);
+    expect(info.tag, 'Page Down must not move focus out of the feed').toBe('article');
+    const focused = page.locator(':focus');
+    const [posinset, setsize] = await focused.evaluate((el) => [
+      el.getAttribute('aria-posinset'),
+      el.getAttribute('aria-setsize'),
+    ]);
+    expect(posinset, 'there is no next article to move to').toBe(setsize);
+
+    await articles.first().click();
     await page.keyboard.press('PageUp');
-    expect(
-      await isFocused(article(page, 'Article 1')),
-      'there is no previous article to move to'
-    ).toBe(true);
+    expect(await isFocused(articles.first()), 'there is no previous article to move to').toBe(true);
   });
 
   test('Ctrl+End moves focus to the first focusable element after the feed', async ({ page }) => {
