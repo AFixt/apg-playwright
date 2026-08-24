@@ -301,21 +301,6 @@ async function tabindexes(locator) {
 // module-private. `gotoPattern` and `tabUntilFocused` are the only
 // callers, and a spec that reaches for the sentinels directly is a spec
 // asserting something about the harness rather than about the widget.
-// A conformance run that quietly drops assertions and still prints green is the
-// failure mode markOptional() exists to prevent, so APG_REQUIRED_ONLY announces
-// itself before any result appears.
-if (process.env.APG_REQUIRED_ONLY) {
-  // Deliberate CLI output. The no-console rule exists to catch debug logging
-  // left behind; this is the notice that stops a required-only run being
-  // mistaken for a full one.
-  // eslint-disable-next-line no-console
-  console.log(
-    '\n  APG_REQUIRED_ONLY=1 — tests calling markOptional() are SKIPPED.\n' +
-      '  This run checks only what the APG mandates, so it reports fewer tests\n' +
-      '  than a full run by design. Unset it for full coverage.\n'
-  );
-}
-
 /**
  * Mark the current test as covering behaviour the APG treats as Optional, or
  * leaves entirely to the implementation. Call it as the first line of the body.
