@@ -215,38 +215,29 @@ test.describe('Feed — keyboard navigation', () => {
     expect(await isFocused(articles.first()), 'there is no previous article to move to').toBe(true);
   });
 
-  test('Ctrl+End is treated as a plain End, so the feed has no exit key', async ({ page }) => {
+  test('Ctrl+End moves focus to the first focusable element after the feed', async ({ page }) => {
     // APG: "Control + End: Move focus to the first focusable element after the
-    // feed." On this page that is the "Load more" button. `Feed.tsx`'s
-    // handleKeyDown switches on `event.key` with no `ctrlKey` check, so
-    // Ctrl+End is handled as a plain End: focus lands on the last article and
-    // never leaves the feed.
-    // KNOWN GAP — apg-react#159 (Ctrl+End half of that issue).
+    // feed." On this page that is the "Load more" button.
     //
-    // Asserted positively rather than with `test.fail()`. A `test.fail()` here
-    // can flake in the *passing* direction under host load, and Playwright then
-    // reports "Expected to fail, but passed" — turning a green suite red with a
-    // message that reads like the upstream bug was fixed, whose natural
-    // response is to delete the marker and silently drop the coverage (#22).
+    // This was a KNOWN GAP (apg-react#159): `Feed.tsx` switched on `event.key`
+    // with no `ctrlKey` check, so Ctrl+End was handled as a plain End and focus
+    // never left the feed. apg-react 26df4d1 ("claim only unmodified Ctrl+Home
+    // and Ctrl+End") closed that half of the issue, and CI checks apg-react out
+    // at `develop` (ci.yml), so the behaviour under test is now the APG one.
     //
-    // The pair below is what keeps the signal: the first records what the
-    // component does today, and the second fails the day apg-react#159 ships
-    // and says what to do about it.
-    const articles = page.getByRole('article');
+    // Asserted positively, with no `test.fail()`. The marker is what #22 is
+    // about: it could flake in the *passing* direction under host load, and
+    // Playwright then reported "Expected to fail, but passed" -- a red suite
+    // whose message invited deleting the marker and silently dropping the
+    // coverage.
     await article(page, 'Article 2').click();
     expect(await isFocused(article(page, 'Article 2'))).toBe(true);
 
     await page.keyboard.press('Control+End');
 
-    // Checked first, so this is the message a reader sees the day it changes,
-    // rather than the descriptive one below.
     expect(
       await isFocused(page.getByRole('button', { name: 'Load more' })),
-      'apg-react#159 has shipped — Ctrl+End now exits the feed. Rewrite this test to assert the APG behaviour and drop the KNOWN GAP note.'
-    ).toBe(false);
-    expect(
-      await isFocused(articles.last()),
-      'Ctrl+End is handled as a plain End, so focus lands on the last article'
+      'Ctrl+End must move focus to the first focusable element after the feed'
     ).toBe(true);
   });
 
