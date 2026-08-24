@@ -30,7 +30,7 @@
  *
  * See issue #4 for the failure this replaced.
  */
-const { expect } = require('@playwright/test');
+const { expect, test } = require('@playwright/test');
 
 /** Marks the harness's own tab stop. Not part of any pattern under test. */
 const SENTINEL_ATTRIBUTE = 'data-apg-tab-sentinel';
@@ -301,7 +301,81 @@ async function tabindexes(locator) {
 // module-private. `gotoPattern` and `tabUntilFocused` are the only
 // callers, and a spec that reaches for the sentinels directly is a spec
 // asserting something about the harness rather than about the widget.
+// A conformance run that quietly drops assertions and still prints green is the
+// failure mode markOptional() exists to prevent, so APG_REQUIRED_ONLY announces
+// itself before any result appears.
+if (process.env.APG_REQUIRED_ONLY) {
+  // Deliberate CLI output. The no-console rule exists to catch debug logging
+  // left behind; this is the notice that stops a required-only run being
+  // mistaken for a full one.
+  // eslint-disable-next-line no-console
+  console.log(
+    '\n  APG_REQUIRED_ONLY=1 — tests calling markOptional() are SKIPPED.\n' +
+      '  This run checks only what the APG mandates, so it reports fewer tests\n' +
+      '  than a full run by design. Unset it for full coverage.\n'
+  );
+}
+
+/**
+ * Mark the current test as covering behaviour the APG treats as Optional, or
+ * leaves entirely to the implementation. Call it as the first line of the body.
+ *
+ * Counterpart to `test.fail()`, which this suite uses for a known apg-react
+ * defect. The two are not interchangeable:
+ *
+ *                      | implemented       | not implemented
+ *   -------------------|-------------------|---------------------------------
+ *   APG requires it    | ordinary test()   | test.fail() — a real defect
+ *   APG marks optional | markOptional()    | document as not covered; no test
+ *
+ * The bottom-right cell has no marker on purpose. If the APG does not require
+ * the behaviour and the component does not implement it, there is no gap to
+ * track — marking it `test.fail` produces a test that turns RED against a
+ * *conforming* implementation that does offer the optional key, which is the
+ * same false-failure class this helper exists to prevent. See the type-ahead
+ * note in `specs/menubar.spec.js` for a case that was exactly that.
+ *
+ * The test runs by default: the suite's primary target is the APG's own demos,
+ * which do implement the optional behaviour, and keeping the default path
+ * executing is what stops these bodies rotting. APG_REQUIRED_ONLY=1 skips it —
+ * the mode for pointing this suite at a third-party widget.
+ *
+ *   test('Home moves to the first tab and End to the last', async ({ page }) => {
+ *     markOptional('Tabs \u00a7 Keyboard Interaction — Home and End are marked "(Optional)"');
+ *     …
+ *   });
+ *
+ * NOTE ON SHAPE: the sibling suites wrap the whole test — `itOptional(title,
+ * basis, fn)`. Playwright is deliberately different. A wrapper hides every
+ * assertion from `playwright/no-standalone-expect`, which has no option to
+ * teach it new test-block functions, and it bypasses `test.skip(condition,
+ * reason)` — Playwright's own conditional-skip API, which puts the reason in
+ * the report. Calling it in the body keeps the assertions inside a real
+ * `test()` and uses the framework as intended.
+ *
+ * `basis` is required and must cite where the APG says this is optional. The
+ * dangerous mistake here is not a vacuous test but a *mislabelled* one: marking
+ * a genuine requirement optional silently weakens the suite and makes it report
+ * "conforms" for a widget that does not. No runtime check can catch a misreading
+ * of the spec, so the guard is forcing the citation to the call site.
+ *
+ * @param {string} basis  where the APG marks this optional
+ */
+function markOptional(basis) {
+  if (typeof basis !== 'string' || !basis.trim()) {
+    throw new Error(
+      `markOptional() needs a basis citing where the APG marks this optional, ` +
+        `e.g. 'Tabs \u00a7 Keyboard Interaction'. Without one there is nothing to ` +
+        `check the claim against, and a requirement mislabelled as optional ` +
+        `would be skipped in conformance runs.`
+    );
+  }
+
+  test.skip(Boolean(process.env.APG_REQUIRED_ONLY), `APG-optional — ${basis}`);
+}
+
 module.exports = {
+  markOptional,
   demoPath,
   gotoPattern,
   activeElementInfo,

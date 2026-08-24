@@ -17,11 +17,12 @@
  */
 const { test, expect } = require('@playwright/test');
 const {
-  gotoPattern,
-  tabUntilFocused,
-  isFocused,
   expectTabExits,
+  gotoPattern,
+  isFocused,
+  tabUntilFocused,
   tabindexes,
+  markOptional,
 } = require('./support/apg');
 
 const CONTROLS = ['Bold', 'Italic', 'Underline', 'Strikethrough'];
@@ -164,6 +165,8 @@ test.describe('Toolbar — keyboard navigation', () => {
   });
 
   test('arrow navigation wraps at both ends', async ({ page }) => {
+    markOptional('Toolbar § Keyboard Interaction — "Optionally, focus movement may wrap"');
+
     // The APG marks wrapping optional for toolbars; this one implements it, so
     // the spec pins the behaviour it actually advertises to users.
     const bold = page.getByRole('button', { name: 'Bold' });
@@ -178,6 +181,8 @@ test.describe('Toolbar — keyboard navigation', () => {
   });
 
   test('Home moves to the first control and End to the last', async ({ page }) => {
+    markOptional('Toolbar § Keyboard Interaction — Home and End are marked "(Optional)"');
+
     const bold = page.getByRole('button', { name: 'Bold' });
     const strike = page.getByRole('button', { name: 'Strikethrough' });
 

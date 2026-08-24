@@ -12,7 +12,13 @@
  *   combobox-tab-behavior-with-open-popup, combobox-popup-aria-roles
  */
 const { test, expect } = require('@playwright/test');
-const { gotoPattern, tabUntilFocused, isFocused, pressTab } = require('./support/apg');
+const {
+  gotoPattern,
+  isFocused,
+  pressTab,
+  tabUntilFocused,
+  markOptional,
+} = require('./support/apg');
 
 const LABEL = 'Country';
 
@@ -227,11 +233,22 @@ test.describe('Combobox — opening and closing the popup', () => {
     // Tab has to carry focus past the entire widget.
     expect(await isFocused(combobox), 'Tab must move focus out of the combobox').toBe(false);
     expect(await isFocused(toggle), 'Tab must not land on the popup toggle button').toBe(false);
+  });
 
-    // Example-specific, NOT an APG requirement. This demo also closes the popup
-    // when focus leaves; an implementation that keeps it open while focus moves
-    // past the widget still conforms. Drop these two lines when running against
-    // an implementation that does so. See AFixt/apg-gherkin#73.
+  test('Tab also closes the popup on the way out', async ({ page }) => {
+    markOptional('APG is silent — it requires only that Tab leaves the widget');
+
+    // Split out of the test above, which asserts the requirement. This demo
+    // also closes the popup when focus leaves; an implementation that keeps it
+    // open while focus moves past the widget still conforms. See
+    // AFixt/apg-gherkin#73.
+    const combobox = page.getByRole('combobox', { name: LABEL });
+    await tabUntilFocused(page, combobox);
+    await page.keyboard.press('ArrowDown');
+    await expect(page.getByRole('listbox')).toBeVisible();
+
+    await pressTab(page);
+
     await expect(combobox).toHaveAttribute('aria-expanded', 'false');
     await expect(page.getByRole('listbox')).toHaveCount(0);
   });
@@ -266,6 +283,10 @@ test.describe('Combobox — navigating the popup with aria-activedescendant', ()
   });
 
   test('Home and End jump the active option to the ends of the list', async ({ page }) => {
+    markOptional(
+      'Combobox § Keyboard Interaction (listbox popup) — Home and End are marked "(Optional)"'
+    );
+
     const combobox = page.getByRole('combobox', { name: LABEL });
     await tabUntilFocused(page, combobox);
     await page.keyboard.press('ArrowDown');

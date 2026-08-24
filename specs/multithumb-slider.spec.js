@@ -8,7 +8,13 @@
  *   multithumb-slider-maintaining-tab-order, multithumb-slider-user-friendly-value
  */
 const { test, expect } = require('@playwright/test');
-const { gotoPattern, tabUntilFocused, isFocused, pressTab } = require('./support/apg');
+const {
+  gotoPattern,
+  isFocused,
+  pressTab,
+  tabUntilFocused,
+  markOptional,
+} = require('./support/apg');
 
 // A price range: two thumbs on one track, each its own role="slider".
 const MIN_THUMB = 'Minimum price';
@@ -187,6 +193,8 @@ test.describe('Multi-thumb slider — keyboard adjustment', () => {
   });
 
   test('Page Up and Page Down move by a larger step than the arrow keys', async ({ page }) => {
+    markOptional('Slider § Keyboard Interaction — Page Up and Page Down are marked "(Optional)"');
+
     const high = page.getByRole('slider', { name: MAX_THUMB });
     await tabUntilFocused(page, high);
 

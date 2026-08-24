@@ -8,7 +8,14 @@
  *   spinbutton-direct-editing, spinbutton-handling-invalid-input
  */
 const { test, expect } = require('@playwright/test');
-const { gotoPattern, tabUntilFocused, isFocused, pressTab, byId } = require('./support/apg');
+const {
+  byId,
+  gotoPattern,
+  isFocused,
+  pressTab,
+  tabUntilFocused,
+  markOptional,
+} = require('./support/apg');
 
 const NAME = 'Quantity';
 const START = 10;
@@ -85,6 +92,10 @@ test.describe('Spinbutton — keyboard adjustment', () => {
   });
 
   test('Page Up and Page Down move by a larger step', async ({ page }) => {
+    markOptional(
+      'Spinbutton § Keyboard Interaction — Page Up and Page Down are marked "(Optional)"'
+    );
+
     const spinbutton = page.getByRole('spinbutton', { name: NAME });
     await tabUntilFocused(page, spinbutton);
 

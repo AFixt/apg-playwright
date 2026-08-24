@@ -9,12 +9,13 @@
  */
 const { test, expect } = require('@playwright/test');
 const {
+  byId,
   gotoPattern,
-  tabUntilFocused,
   isFocused,
   pressShiftTab,
   pressTab,
-  byId,
+  tabUntilFocused,
+  markOptional,
 } = require('./support/apg');
 
 const HEADERS = ['Section 1', 'Section 2', 'Section 3'];
@@ -109,6 +110,8 @@ test.describe('Accordion — keyboard navigation', () => {
   });
 
   test('Down Arrow moves focus to the next header and Up Arrow moves back', async ({ page }) => {
+    markOptional('Accordion § Optional Keyboard Interaction');
+
     const first = page.getByRole('button', { name: 'Section 1' });
     const second = page.getByRole('button', { name: 'Section 2' });
 
@@ -121,6 +124,8 @@ test.describe('Accordion — keyboard navigation', () => {
   });
 
   test('Home moves focus to the first header and End to the last', async ({ page }) => {
+    markOptional('Accordion § Optional Keyboard Interaction');
+
     const first = page.getByRole('button', { name: 'Section 1' });
     const last = page.getByRole('button', { name: 'Section 3' });
 
@@ -133,6 +138,8 @@ test.describe('Accordion — keyboard navigation', () => {
   });
 
   test('Down Arrow from the last header wraps to the first', async ({ page }) => {
+    markOptional('APG is silent — it says only "moves focus to the next accordion header"');
+
     const first = page.getByRole('button', { name: 'Section 1' });
     const last = page.getByRole('button', { name: 'Section 3' });
 

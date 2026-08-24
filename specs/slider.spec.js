@@ -8,7 +8,13 @@
  *   slider-user-friendly-value
  */
 const { test, expect } = require('@playwright/test');
-const { gotoPattern, tabUntilFocused, isFocused, pressTab } = require('./support/apg');
+const {
+  gotoPattern,
+  isFocused,
+  pressTab,
+  tabUntilFocused,
+  markOptional,
+} = require('./support/apg');
 
 // The demo publishes two independent sliders. They are deliberately different
 // shapes: "Volume" is a plain numeric range, "Temperature" is a four-position
@@ -135,6 +141,8 @@ test.describe('Slider — keyboard adjustment', () => {
   });
 
   test('Page Up and Page Down move by a larger step than the arrow keys', async ({ page }) => {
+    markOptional('Slider § Keyboard Interaction — Page Up and Page Down are marked "(Optional)"');
+
     const slider = page.getByRole('slider', { name: VOLUME });
     await tabUntilFocused(page, slider);
 
@@ -231,6 +239,8 @@ test.describe('Slider — user-friendly value (aria-valuetext)', () => {
   });
 
   test('Page Up and Page Down clamp to the bounds on a short range', async ({ page }) => {
+    markOptional('Slider § Keyboard Interaction — Page Up and Page Down are marked "(Optional)"');
+
     // The page step (10) is larger than the whole 0-3 range, so both keys must
     // land exactly on a bound rather than overshooting it.
     const slider = page.getByRole('slider', { name: TEMPERATURE });

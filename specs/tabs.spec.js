@@ -16,13 +16,14 @@
  */
 const { test, expect } = require('@playwright/test');
 const {
+  byId,
   gotoPattern,
-  tabUntilFocused,
   isFocused,
-  tabindexes,
   pressShiftTab,
   pressTab,
-  byId,
+  tabUntilFocused,
+  tabindexes,
+  markOptional,
 } = require('./support/apg');
 
 const TABS = ['Tab 1', 'Tab 2', 'Tab 3'];
@@ -202,6 +203,8 @@ test.describe('Tabs — keyboard navigation', () => {
   });
 
   test('Home moves to the first tab and End to the last', async ({ page }) => {
+    markOptional('Tabs § Keyboard Interaction — Home and End are marked "(Optional)"');
+
     const first = page.getByRole('tab', { name: 'Tab 1' });
     const last = page.getByRole('tab', { name: 'Tab 3' });
 
