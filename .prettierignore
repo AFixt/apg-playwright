@@ -4,7 +4,9 @@ test-results
 package-lock.json
 
 # Claude Code's per-developer local settings (git-ignored, but Prettier does
-# not read .gitignore). Scoped to the local file rather than all of .claude/,
-# because committed .claude/ content — agent definitions, launch.json — should
-# still be formatted.
+# not read .gitignore). Scoped to the one local file rather than all of
+# .claude/, so that any .claude/ content this repo does commit later — agent
+# definitions, launch.json — is still formatted. Nothing under .claude/ is
+# tracked today; the narrow scope is to keep it that way by choice rather than
+# by accident.
 .claude/settings.local.json
