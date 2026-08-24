@@ -3,5 +3,8 @@ playwright-report
 test-results
 package-lock.json
 
-# Claude Code per-developer settings (git-ignored, but Prettier does not read .gitignore)
-.claude/
+# Claude Code's per-developer local settings (git-ignored, but Prettier does
+# not read .gitignore). Scoped to the local file rather than all of .claude/,
+# because committed .claude/ content — agent definitions, launch.json — should
+# still be formatted.
+.claude/settings.local.json
