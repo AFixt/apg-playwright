@@ -9,12 +9,12 @@
  */
 const { test, expect } = require('@playwright/test');
 const {
-  byId,
   gotoPattern,
+  tabUntilFocused,
   isFocused,
   pressShiftTab,
   pressTab,
-  tabUntilFocused,
+  byId,
   markOptional,
 } = require('./support/apg');
 

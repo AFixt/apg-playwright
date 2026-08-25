@@ -14,9 +14,9 @@
 const { test, expect } = require('@playwright/test');
 const {
   gotoPattern,
+  tabUntilFocused,
   isFocused,
   pressTab,
-  tabUntilFocused,
   markOptional,
 } = require('./support/apg');
 

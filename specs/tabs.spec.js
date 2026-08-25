@@ -16,13 +16,13 @@
  */
 const { test, expect } = require('@playwright/test');
 const {
-  byId,
   gotoPattern,
+  tabUntilFocused,
   isFocused,
+  tabindexes,
   pressShiftTab,
   pressTab,
-  tabUntilFocused,
-  tabindexes,
+  byId,
   markOptional,
 } = require('./support/apg');
 

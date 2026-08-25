@@ -26,10 +26,10 @@
  */
 const { test, expect } = require('@playwright/test');
 const {
-  expectTabExits,
   gotoPattern,
-  isFocused,
   tabUntilFocused,
+  isFocused,
+  expectTabExits,
   tabindexes,
   markOptional,
 } = require('./support/apg');
