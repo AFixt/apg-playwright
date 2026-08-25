@@ -160,15 +160,20 @@ test.describe('Feed — roles, states, and properties', () => {
 
     await expect(target).toHaveAccessibleName('Article 2');
 
-    const pointsAtOwnHeading = await target.evaluate((el) => {
-      const id = el.getAttribute('aria-labelledby');
-      const referenced = id && document.getElementById(id);
-      return Boolean(referenced) && el.contains(referenced) && referenced.tagName === 'H2';
-    });
-    expect(
-      pointsAtOwnHeading,
+    await expect(target, 'the article must reference a label element').toHaveAttribute(
+      'aria-labelledby',
+      /\S/
+    );
+    const labelledby = await target.getAttribute('aria-labelledby');
+
+    // Scoped to the article, so a reference resolving to some other element
+    // with the same text does not satisfy it. Quoted attribute selector rather
+    // than `#id` for the same reason byId() uses one: useId() puts `:` in the
+    // id, which `#id` cannot express, and JSON.stringify supplies the quoting.
+    await expect(
+      target.locator(`h2[id=${JSON.stringify(labelledby)}]`),
       'aria-labelledby must resolve to a heading inside this same article'
-    ).toBe(true);
+    ).toHaveCount(1);
   });
 });
 
