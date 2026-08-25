@@ -19,21 +19,20 @@ The suite runs against the APG pattern demo pages published by [`AFixt/apg-react
 Start the demo server in one terminal:
 
 ```sh
-git clone --branch develop https://github.com/AFixt/apg-react.git
+git clone https://github.com/AFixt/apg-react.git
 cd apg-react
-nvm use 22 && npm ci   # NOT `nvm use` — see the note below
+nvm use && npm ci
 npm run serve          # serves http://localhost:8080/demos/<pattern>.html
 ```
 
-> **Clone `develop`, not the default branch.** The demo pages and the `serve`
-> script live on apg-react's `develop` branch and have not reached `main` yet,
-> so a plain `git clone` lands on a checkout with no `npm run serve` at all.
->
-> **Use Node 22 for apg-react, not its `.nvmrc`.** That repo pins `.nvmrc` to
-> `20` while its `package.json` requires `>=22.13.0` with `engine-strict=true`,
-> so the documented `nvm use && npm ci` fails with `EBADENGINE`. Tracked as
-> [apg-react#149](https://github.com/AFixt/apg-react/issues/149). This suite
-> also targets Node 22 so a single version serves both repos.
+> Both workarounds that used to live here are gone as of apg-react v2.1.0
+> (2026-08-25): the demo pages and the `serve` script reached `main`
+> ([apg-react#168](https://github.com/AFixt/apg-react/issues/168)), and that
+> repo's `.nvmrc` and `.node-version` now say `22`, matching its
+> `engines.node` of `>=22.13.0`
+> ([apg-react#149](https://github.com/AFixt/apg-react/issues/149)). A plain
+> clone and a plain `nvm use` both work. This suite targets Node 22 too, so one
+> version serves both repos.
 
 Then run the suite in another:
 
