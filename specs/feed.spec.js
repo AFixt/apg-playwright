@@ -150,10 +150,30 @@ test.describe('Feed — roles, states, and properties', () => {
     // instance — and a marker that pinned the old spelling stayed green for the
     // wrong reason once that changed: the id mismatch threw, and the failure
     // read as "gap still present". See AFixt/apg-jasmine#15.
-    await article(page, 'Article 2').click();
-    expect(await isFocused(article(page, 'Article 2'))).toBe(true);
+    //
+    // The name alone would still pass if aria-labelledby pointed at some other
+    // element that happened to read "Article 2", so the reference is checked to
+    // resolve to a heading inside this same article.
+    const target = article(page, 'Article 2');
+    await target.click();
+    expect(await isFocused(target)).toBe(true);
 
-    await expect(article(page, 'Article 2')).toHaveAccessibleName('Article 2');
+    await expect(target).toHaveAccessibleName('Article 2');
+
+    await expect(target, 'the article must reference a label element').toHaveAttribute(
+      'aria-labelledby',
+      /\S/
+    );
+    const labelledby = await target.getAttribute('aria-labelledby');
+
+    // Scoped to the article, so a reference resolving to some other element
+    // with the same text does not satisfy it. Quoted attribute selector rather
+    // than `#id` for the same reason byId() uses one: useId() puts `:` in the
+    // id, which `#id` cannot express, and JSON.stringify supplies the quoting.
+    await expect(
+      target.locator(`h2[id=${JSON.stringify(labelledby)}]`),
+      'aria-labelledby must resolve to a heading inside this same article'
+    ).toHaveCount(1);
   });
 });
 
@@ -161,12 +181,12 @@ test.describe('Feed — keyboard navigation', () => {
   test("the feed's articles are in the page Tab sequence", async ({ page }) => {
     // The APG's feed example makes each article `tabindex="0"` so that "the
     // article element [is] focusable and included in the page Tab sequence".
-    // Here every article is `tabindex="-1"`, so Tab skips the entire feed and
-    // lands on the "Load more" button — a keyboard-only user can never put
-    // focus inside the feed, and the whole Page Up / Page Down contract below
-    // is unreachable for them.
-    // KNOWN GAP — apg-react#159.
-    test.fail();
+    //
+    // This was a KNOWN GAP (apg-react#159): every article was `tabindex="-1"`,
+    // so Tab skipped the whole feed and landed on "Load more". A keyboard-only
+    // user could never put focus inside, which made the Page Up / Page Down
+    // contract below unreachable for exactly the people it exists for.
+    // apg-react cc3fe33 put articles in the tab sequence and closed the issue.
 
     const presses = await tabUntilFocused(page, article(page, 'Article 1'));
     expect(presses, 'Tab must be able to reach the first article').toBeGreaterThan(0);
