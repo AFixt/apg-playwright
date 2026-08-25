@@ -4,8 +4,7 @@
  * https://www.w3.org/WAI/ARIA/apg/patterns/grid/
  *
  * Derived from apg-usecases `patterns/grid/*.uc.yaml`:
- *   grid-aria-roles-and-properties, grid-data-grid-navigation,
- *   grid-layout-navigation
+ *   grid-aria-roles-and-properties, grid-data-grid-navigation
  *
  * Not covered, because this demo does not implement the optional variants the
  * APG describes: `grid-editing-and-navigation` (no cell is editable, so there
@@ -13,6 +12,12 @@
  * `grid-selecting-cells-rows-columns` (nothing exposes `aria-selected` or
  * `aria-multiselectable`). Both are "if the grid supports it" features in the
  * APG, so their absence is a scope decision rather than a defect.
+ *
+ * This demo is a DATA grid: numeric cells under four columnheaders. The layout
+ * variant has its own demo and its own spec — see grid-layout.spec.js. The two
+ * are not interchangeable: Control+Home / Control+End are required here and
+ * optional there, which is why `grid-layout-navigation` is no longer claimed as
+ * a source for this file. See AFixt/apg-react#188.
  */
 const { test, expect } = require('@playwright/test');
 const {
