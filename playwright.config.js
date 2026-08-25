@@ -16,6 +16,27 @@ const { defineConfig, devices } = require('@playwright/test');
  */
 const baseURL = process.env.APG_BASE_URL || 'http://localhost:8080';
 
+// A conformance run that quietly drops assertions and still prints green is the
+// failure mode markOptional() exists to prevent, so APG_REQUIRED_ONLY announces
+// itself before any result appears.
+//
+// Guarded on TEST_WORKER_INDEX because Playwright evaluates this config in every
+// worker as well as in the parent — moving the notice out of
+// specs/support/apg.js was not enough on its own. Unguarded it printed nine
+// times on a Chromium-only run and twenty-five across all three engines. Only
+// the parent has TEST_WORKER_INDEX unset, so this fires exactly once.
+if (process.env.APG_REQUIRED_ONLY && process.env.TEST_WORKER_INDEX === undefined) {
+  // Deliberate CLI output. The no-console rule exists to catch debug logging
+  // left behind; this is the notice that stops a required-only run being
+  // mistaken for a full one.
+  // eslint-disable-next-line no-console
+  console.log(
+    '\n  APG_REQUIRED_ONLY=1 — tests calling markOptional() are SKIPPED.\n' +
+      '  This run checks only what the APG mandates, so it reports fewer tests\n' +
+      '  than a full run by design. Unset it for full coverage.\n'
+  );
+}
+
 module.exports = defineConfig({
   testDir: './specs',
   testMatch: '**/*.spec.js',

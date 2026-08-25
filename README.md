@@ -19,21 +19,20 @@ The suite runs against the APG pattern demo pages published by [`AFixt/apg-react
 Start the demo server in one terminal:
 
 ```sh
-git clone --branch develop https://github.com/AFixt/apg-react.git
+git clone https://github.com/AFixt/apg-react.git
 cd apg-react
-nvm use 22 && npm ci   # NOT `nvm use` — see the note below
+nvm use && npm ci
 npm run serve          # serves http://localhost:8080/demos/<pattern>.html
 ```
 
-> **Clone `develop`, not the default branch.** The demo pages and the `serve`
-> script live on apg-react's `develop` branch and have not reached `main` yet,
-> so a plain `git clone` lands on a checkout with no `npm run serve` at all.
->
-> **Use Node 22 for apg-react, not its `.nvmrc`.** That repo pins `.nvmrc` to
-> `20` while its `package.json` requires `>=22.13.0` with `engine-strict=true`,
-> so the documented `nvm use && npm ci` fails with `EBADENGINE`. Tracked as
-> [apg-react#149](https://github.com/AFixt/apg-react/issues/149). This suite
-> also targets Node 22 so a single version serves both repos.
+> Both workarounds that used to live here are gone as of apg-react v2.1.0
+> (2026-08-25): the demo pages and the `serve` script reached `main`
+> ([apg-react#168](https://github.com/AFixt/apg-react/issues/168)), and that
+> repo's `.nvmrc` and `.node-version` now say `22`, matching its
+> `engines.node` of `>=22.13.0`
+> ([apg-react#149](https://github.com/AFixt/apg-react/issues/149)). A plain
+> clone and a plain `nvm use` both work. This suite targets Node 22 too, so one
+> version serves both repos.
 
 Then run the suite in another:
 
@@ -95,7 +94,7 @@ The suite follows the AFixt standard tooling, so the same commands work here as 
 | `npm run check`          | lint + format + markdown                                     |
 | `npm run check:all`      | `check` plus duplication and licences                        |
 
-`.github/workflows/ci.yml` runs the linters, the duplication check, `npm audit` and the full three-engine suite on every pull request. `.github/workflows/security.yml` runs the slower scans — CodeQL, OSV-Scanner, Semgrep's OWASP Top 10 rules, and the licence check — every Monday. There is no Dependabot: dependency updates are raised by hand through the repository's own tooling, on demand.
+`.github/workflows/ci.yml` runs the linters, the duplication check, `npm audit` and the full three-engine suite on every pull request. `.github/workflows/security.yml` runs the slower scans — CodeQL, OSV-Scanner, Semgrep's OWASP Top 10 rules, and the licence check — on every pull request too. There is no Dependabot: dependency updates are raised by hand through the repository's own tooling, on demand.
 
 Husky installs a pre-commit hook that runs ESLint, Prettier and markdownlint over staged files. Bypass it with `git commit --no-verify` when you need to.
 
@@ -121,3 +120,65 @@ Hand-rolling either pattern inside a spec would produce a test that cannot fail,
 ## License
 
 MIT
+
+## Required vs optional behaviour
+
+Every assertion sits somewhere on two axes: whether the APG _requires_ the
+behaviour, and whether the widget under test _implements_ it. Each cell gets a
+different treatment, and mixing them up produces tests that report a conforming
+widget as broken.
+
+|                        | implemented by the widget | not implemented                        |
+| ---------------------- | ------------------------- | -------------------------------------- |
+| **APG requires it**    | ordinary `test()`         | `test.fail()` — a real defect          |
+| **APG marks optional** | `markOptional(basis)`     | documented in the spec header; no test |
+
+`markOptional(basis)` is called as the first line of a test body:
+
+```js
+test('Home moves to the first tab and End to the last', async ({ page }) => {
+  markOptional('Tabs § Keyboard Interaction — Home and End are marked "(Optional)"');
+  // …ordinary assertions…
+});
+```
+
+`basis` is required and must cite where the APG says so — a mislabelled
+requirement is skipped in conformance runs and silently weakens the suite, and
+no runtime check can catch a misreading of the spec, so the citation sits at the
+call site where a reviewer sees it.
+
+**The bottom-right cell deliberately has no marker.** If the APG does not
+require the behaviour and the widget does not implement it, there is nothing to
+assert and no defect to track. Marking it `test.fail` produces a test that turns
+red against a _conforming_ implementation that does offer the optional key — see
+the type-ahead note in [`specs/menubar.spec.js`](specs/menubar.spec.js), which
+was exactly that mistake.
+
+> **Why this differs from the sibling suites.** apg-cypress, apg-mocha,
+> apg-jasmine, apg-jest and apg-nightwatch wrap the whole test —
+> `itOptional(title, basis, fn)`. Playwright does not, for two reasons: a
+> wrapper hides every assertion from `playwright/no-standalone-expect`, which
+> has no option to teach it new test-block functions, and it bypasses
+> `test.skip(condition, reason)`, Playwright's own conditional-skip API, which
+> puts the reason in the report. Calling it in the body keeps assertions inside
+> a real `test()` and uses the framework as intended. The semantics are
+> identical.
+
+### `APG_REQUIRED_ONLY=1`
+
+Skips every test that calls `markOptional()`, so the run answers "does this
+conform?" rather than "does this match the APG's example?":
+
+```sh
+APG_REQUIRED_ONLY=1 APG_BASE_URL=https://staging.example.com npm test
+```
+
+This is the mode for pointing the suite at your own widget. Without it, a widget
+implementing only what the APG mandates is reported as failing — which is the
+whole reason the flag exists. The run announces the mode before any result, and
+Playwright reports the skips with their reason:
+
+```text
+14 skipped
+301 passed
+```

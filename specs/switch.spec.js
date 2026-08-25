@@ -21,7 +21,13 @@
  *     there is no description element to resolve.
  */
 const { test, expect } = require('@playwright/test');
-const { gotoPattern, tabUntilFocused, isFocused, expectTabExits } = require('./support/apg');
+const {
+  gotoPattern,
+  tabUntilFocused,
+  isFocused,
+  expectTabExits,
+  markOptional,
+} = require('./support/apg');
 
 const LABEL = 'Notifications';
 
@@ -97,6 +103,8 @@ test.describe('Switch — keyboard operation', () => {
   });
 
   test('Enter also toggles the switch', async ({ page }) => {
+    markOptional('Switch § Keyboard Interaction — Enter is marked "(Optional)"');
+
     // APG lists Enter as "(Optional)" for Switch. This implementation handles
     // it, so the behaviour is asserted rather than left to drift silently.
     const control = page.getByRole('switch', { name: LABEL });
