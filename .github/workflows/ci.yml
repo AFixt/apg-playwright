@@ -89,6 +89,10 @@ jobs:
       - name: Copy/paste detection
         run: npm run dupes
 
+      # Deliberately not `--omit=dev`, which is the house default for a
+      # published package: every dependency here is a devDependency, so
+      # omitting them would audit an empty tree and pass unconditionally.
+      # Kept here when security.yml's duplicate npm-audit job was removed.
       - name: npm audit
         run: npm run security:audit
 
