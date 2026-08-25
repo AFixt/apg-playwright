@@ -120,3 +120,65 @@ Hand-rolling either pattern inside a spec would produce a test that cannot fail,
 ## License
 
 MIT
+
+## Required vs optional behaviour
+
+Every assertion sits somewhere on two axes: whether the APG _requires_ the
+behaviour, and whether the widget under test _implements_ it. Each cell gets a
+different treatment, and mixing them up produces tests that report a conforming
+widget as broken.
+
+|                        | implemented by the widget | not implemented                        |
+| ---------------------- | ------------------------- | -------------------------------------- |
+| **APG requires it**    | ordinary `test()`         | `test.fail()` — a real defect          |
+| **APG marks optional** | `markOptional(basis)`     | documented in the spec header; no test |
+
+`markOptional(basis)` is called as the first line of a test body:
+
+```js
+test('Home moves to the first tab and End to the last', async ({ page }) => {
+  markOptional('Tabs § Keyboard Interaction — Home and End are marked "(Optional)"');
+  // …ordinary assertions…
+});
+```
+
+`basis` is required and must cite where the APG says so — a mislabelled
+requirement is skipped in conformance runs and silently weakens the suite, and
+no runtime check can catch a misreading of the spec, so the citation sits at the
+call site where a reviewer sees it.
+
+**The bottom-right cell deliberately has no marker.** If the APG does not
+require the behaviour and the widget does not implement it, there is nothing to
+assert and no defect to track. Marking it `test.fail` produces a test that turns
+red against a _conforming_ implementation that does offer the optional key — see
+the type-ahead note in [`specs/menubar.spec.js`](specs/menubar.spec.js), which
+was exactly that mistake.
+
+> **Why this differs from the sibling suites.** apg-cypress, apg-mocha,
+> apg-jasmine, apg-jest and apg-nightwatch wrap the whole test —
+> `itOptional(title, basis, fn)`. Playwright does not, for two reasons: a
+> wrapper hides every assertion from `playwright/no-standalone-expect`, which
+> has no option to teach it new test-block functions, and it bypasses
+> `test.skip(condition, reason)`, Playwright's own conditional-skip API, which
+> puts the reason in the report. Calling it in the body keeps assertions inside
+> a real `test()` and uses the framework as intended. The semantics are
+> identical.
+
+### `APG_REQUIRED_ONLY=1`
+
+Skips every test that calls `markOptional()`, so the run answers "does this
+conform?" rather than "does this match the APG's example?":
+
+```sh
+APG_REQUIRED_ONLY=1 APG_BASE_URL=https://staging.example.com npm test
+```
+
+This is the mode for pointing the suite at your own widget. Without it, a widget
+implementing only what the APG mandates is reported as failing — which is the
+whole reason the flag exists. The run announces the mode before any result, and
+Playwright reports the skips with their reason:
+
+```text
+14 skipped
+301 passed
+```
