@@ -1,11 +1,21 @@
-name: Security (scheduled)
+name: Security
 
-# `npm audit` runs on every pull request in ci.yml. This workflow holds the
-# slower scans — the ones worth a weekly run rather than a per-push one.
+# Scheduled runs are banned fleet-wide: a timer-triggered failure is
+# attributable to nobody and gets ignored, whereas the same check on a pull
+# request blocks the change that introduced it. These scans now run on every PR
+# and on push to the integration branches. workflow_dispatch remains for manual
+# full runs. Mirrors AFixt/apg-react#127.
+#
+# The former npm-audit job is gone from this file: the identical command
+# (`npm run security:audit`) already gates every PR as ci.yml's "npm audit"
+# step, and running these on pull_request would have fired it twice per PR.
+# `license:check` has no counterpart in ci.yml, so it stays here.
 
 on:
-  schedule:
-    - cron: '0 6 * * 1' # Mondays 06:00 UTC
+  pull_request:
+    branches: [main, develop]
+  push:
+    branches: [main, develop]
   workflow_dispatch:
 
 concurrency:
@@ -69,20 +79,6 @@ jobs:
             --config=p/secrets \
             --error \
             --metrics=off
-
-  npm-audit:
-    name: npm audit
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
-      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
-        with:
-          node-version-file: .nvmrc
-          cache: npm
-      - run: npm ci
-      # Every dependency here is a devDependency, so `--omit=dev` — the house
-      # default for a published package — would audit an empty tree.
-      - run: npm run security:audit
 
   license-check:
     name: License compliance

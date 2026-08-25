@@ -16,6 +16,13 @@
  * Not covered here, and why:
  *   - menuitemcheckbox / menuitemradio and aria-disabled items: this menubar
  *     contains plain command items only.
+ *   - type-ahead inside an open menu: the APG marks the printable-character key
+ *     Optional for menus, and this menubar does not implement it. Optional and
+ *     absent is the one combination that gets no test — there is no requirement
+ *     to assert and no defect to track. It was previously a test.fail marker,
+ *     which turns RED when the behaviour appears, so it would have reported a
+ *     *conforming* menubar that does offer type-ahead as a failure. See
+ *     AFixt/apg-react#155, a feature request rather than a defect report.
  */
 const { test, expect } = require('@playwright/test');
 const {
@@ -311,22 +318,4 @@ test.describe('Menubar — navigating an open submenu', () => {
     await page.keyboard.press('End');
     expect(await tabindexes(items)).toEqual(['-1', '-1', '-1', '0']);
   });
-
-  // KNOWN GAP — apg-react#155 (Optional for menus per the APG). The Menubar handles no
-  // printable characters, so type-ahead inside an open menu does nothing. The
-  // APG marks this key Optional for menus — "Move focus to the next item in the
-  // current menu whose label begins with that printable character" — so this is
-  // a recommendation-level gap rather than a conformance failure. It is written
-  // faithfully and marked test.fail so it flips red if type-ahead ever lands.
-  test.fail(
-    'typing a character moves focus to the next matching submenu item',
-    async ({ page }) => {
-      await enterMenubarOn(page, 'File');
-      await page.keyboard.press('Enter');
-      expect(await isFocused(page.getByRole('menuitem', { name: 'New', exact: true }))).toBe(true);
-
-      await page.keyboard.press('s');
-      expect(await isFocused(page.getByRole('menuitem', { name: 'Save', exact: true }))).toBe(true);
-    }
-  );
 });

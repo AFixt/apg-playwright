@@ -31,6 +31,7 @@ const {
   isFocused,
   expectTabExits,
   tabindexes,
+  markOptional,
 } = require('./support/apg');
 
 const FRUITS = ['Apple', 'Banana', 'Cherry', 'Date', 'Elderberry'];
@@ -193,6 +194,8 @@ test.describe('Listbox — keyboard navigation', () => {
   });
 
   test('Home moves to the first option and End to the last', async ({ page }) => {
+    markOptional('Listbox § Keyboard Interaction — Home and End are marked "(Optional)"');
+
     const apple = page.getByRole('option', { name: 'Apple' });
     const elderberry = page.getByRole('option', { name: 'Elderberry' });
 
