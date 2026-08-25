@@ -143,17 +143,17 @@ test.describe('Feed — roles, states, and properties', () => {
 
   test('each article is labelled by its own heading', async ({ page }) => {
     // APG: the article element carries "aria-labelledby referring to elements
-    // inside the article that can serve as a distinguishing label". The demo
-    // gives each heading an id for exactly this purpose but never references
-    // it, so every article reaches assistive technology as an unnamed article
-    // and the feed reads as five identical landmarks.
-    // KNOWN GAP — apg-react#160.
-    test.fail();
-
+    // inside the article that can serve as a distinguishing label".
+    //
+    // Asserted as the resolved name rather than the attribute's literal value.
+    // The id is an implementation detail — apg-react scopes it per component
+    // instance — and a marker that pinned the old spelling stayed green for the
+    // wrong reason once that changed: the id mismatch threw, and the failure
+    // read as "gap still present". See AFixt/apg-jasmine#15.
     await article(page, 'Article 2').click();
     expect(await isFocused(article(page, 'Article 2'))).toBe(true);
 
-    await expect(article(page, 'Article 2')).toHaveAttribute('aria-labelledby', 'article-title-2');
+    await expect(article(page, 'Article 2')).toHaveAccessibleName('Article 2');
   });
 });
 
