@@ -40,11 +40,12 @@ test.beforeEach(async ({ page }) => {
 
 test.describe('Link — roles and accessible names', () => {
   test('every link is exposed as role=link with a non-empty accessible name', async ({ page }) => {
-    // Scoped to the demo itself. apg-react renders page-set chrome outside
-    // `.demo-page` on every demo page -- currently a "back to the demo index"
-    // link, for WCAG 2.4.5 -- and this assertion is about the links the Link
-    // demo renders, not the chrome wrapped around it. Unscoped, the count
-    // tracks apg-react's page furniture rather than the pattern under test.
+    // Scoped to the demo itself: this assertion is about the links the Link
+    // demo renders, not whatever page chrome apg-react wraps around it.
+    // Unscoped, the count tracks apg-react's page furniture rather than the
+    // pattern under test -- AFixt/apg-react#241 proposes a "back to the demo
+    // index" link on every demo page for WCAG 2.4.5, which would land outside
+    // `.demo-page` and make this four.
     // apg-cypress and apg-nightwatch already scope the same assertion this way.
     await expect(page.locator('.demo-page').getByRole('link')).toHaveCount(LINKS.length);
 
