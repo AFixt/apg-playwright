@@ -135,9 +135,6 @@ test.describe('Treegrid — expanding and collapsing', () => {
   test('Right Arrow on a cell that is not the right-most moves focus one cell right', async ({
     page,
   }) => {
-    // KNOWN BUG — apg-react#163. (#165 filed the same defect independently and
-    // was closed as a duplicate; apg-cypress tracks #163 too, so both suites go
-    // red off the same issue when it is fixed.)
     // APG Right Arrow: "If focus is on any other cell, moves focus one cell to
     // the right." The row-level exceptions above it in that table ("if focus is
     // on a collapsed row, expands the row") apply when focus is on the *row*,
@@ -145,10 +142,11 @@ test.describe('Treegrid — expanding and collapsing', () => {
     // on a cell. Expanding a collapsed row from its first cell is a reasonable
     // merge of the two halves and is tested as passing above; but once the row
     // is already expanded, its first cell is just "any other cell" and Right
-    // Arrow must reach the next cell in the same row. This implementation
-    // instead jumps down into the first child row, which leaves "Team A"
-    // unreachable by Right Arrow from where a user starts.
-    test.fail();
+    // Arrow must reach the next cell in the same row.
+    //
+    // apg-react#163 (#165 was its duplicate) jumped down into the first child
+    // row instead, leaving "Team A" unreachable by Right Arrow from where a
+    // user starts. Fixed in v2.2.0.
 
     const phase1 = row(page, 'Phase 1');
     await tabUntilFocused(page, cell(page, 'Phase 1'));
@@ -173,9 +171,15 @@ test.describe('Treegrid — keyboard navigation', () => {
   });
 
   test('Down and Up Arrow move between rows in the same column', async ({ page }) => {
+    // Right Arrow expands Phase 1, then Down Arrow steps into its first child.
+    // Right Arrow never enters a child row: on an expanded row it moves along
+    // the row instead, as the test above asserts. This setup used to press
+    // Right Arrow twice to reach Task 1.1, which only ever worked because of
+    // apg-react#163. Once that was fixed the setup failed before any Down or Up
+    // assertion ran, under a title that made it read as a Down/Up defect (#44).
     await tabUntilFocused(page, cell(page, 'Phase 1'));
     await page.keyboard.press('ArrowRight');
-    await page.keyboard.press('ArrowRight');
+    await page.keyboard.press('ArrowDown');
     expect(await isFocused(cell(page, 'Task 1.1'))).toBe(true);
 
     await page.keyboard.press('ArrowDown');
