@@ -268,11 +268,20 @@ async function tabUntilFocused(page, locator, max = 25) {
     // Where focus actually ended up is the first thing anyone debugging this
     // wants, and it is what distinguishes "this element is not focusable at
     // all" from "the tab ring is shorter than `max` and wrapped past it".
+    //
+    // `activeElementInfo` reports <body>, and no focus at all, as a record of
+    // nulls. Printed raw that reads as a bug in the reporting rather than as
+    // the answer, so name that case instead -- and it is a common one here,
+    // since giving up often means focus wrapped out of the ring entirely.
     const landedOn = await activeElementInfo(page);
+    const where =
+      landedOn.tag === null
+        ? 'the document body — focus was outside the page tab ring entirely'
+        : JSON.stringify(landedOn);
     expect(
       presses,
       `Tab never reached this element in ${max} presses, so nothing after this ` +
-        `line is acting on it. Focus ended on ${JSON.stringify(landedOn)}. ` +
+        `line is acting on it. Focus ended on ${where}. ` +
         `Either the element is not focusable and the spec is testing the wrong ` +
         `focus model, or it is genuinely unreachable by keyboard — both are ` +
         `real results, and neither is what the rest of this test assumes. ` +
