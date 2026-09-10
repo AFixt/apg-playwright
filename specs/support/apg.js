@@ -201,19 +201,19 @@ async function pressShiftTab(page) {
 }
 
 /**
- * Press Tab from the document start until `locator` holds focus, giving up
- * after `max` presses.
+ * Tab from the document start until `locator` holds focus, or give up.
  *
- * This is the honest way to assert "a keyboard user can reach this widget".
- * It returns the number of presses so a caller can also assert the control did
- * not swallow the whole tab ring.
+ * The raw loop, returning the press count or -1. Module-private: reaching a
+ * widget is required in almost every spec here, and a bare -1 is exactly the
+ * kind of result a caller forgets to check. The two exported wrappers below
+ * make the caller say which case it means.
  *
  * Counting starts from the leading sentinel, which is the first thing in
  * `<body>` and is not part of the demo. So a returned 1 still means what it
  * meant before the sentinels existed: this widget is the document's first
  * real tab stop.
  */
-async function tabUntilFocused(page, locator, max = 25) {
+async function tabPressesUntilFocused(page, locator, max) {
   // Re-install rather than assume: a spec that navigates mid-test lands on a
   // fresh document with no sentinels, and waiting for one that will never
   // arrive turns a clear failure into a 30-second timeout. Idempotent.
@@ -228,6 +228,72 @@ async function tabUntilFocused(page, locator, max = 25) {
     }
   }
   return -1;
+}
+
+/**
+ * Press Tab from the document start until `locator` holds focus, and fail the
+ * test if it never does.
+ *
+ * This is the honest way to assert "a keyboard user can reach this widget".
+ * It returns the number of presses so a caller can also assert the control did
+ * not swallow the whole tab ring.
+ *
+ * **Why this asserts rather than returning -1.** It used to return -1 on
+ * giving up, and of roughly 200 call sites across these specs, all but about
+ * twenty discarded it. A discarded -1 does not stop the test: the body carries
+ * on pressing keys at whatever the last Tab happened to leave focused, and the
+ * assertions that follow report on *that* element instead. The result is a
+ * test that passes or fails on a coincidence, with no sign in either outcome
+ * that it never reached its subject.
+ *
+ * That is not hypothetical. `listbox.spec.js` tabs to a listbox *option*, which
+ * the demo never makes focusable, so the helper always gave up; the test then
+ * pressed ArrowDown at whatever the 25th press landed on. The tab ring's period
+ * was 4, `25 mod 4 = 1` put focus back on the listbox, and the assertion passed
+ * for a reason unconnected to what it claimed. Adding one unrelated link to the
+ * page made the period 5, moved press 25 onto the harness's own sentinel, and
+ * flipped it to failing — with no change to any listbox behaviour. See
+ * AFixt/apg-playwright#41.
+ *
+ * A test that cannot reach its subject has not measured the thing it is named
+ * for, whichever way it then lands. Failing here says so once, clearly, instead
+ * of leaving a wrong answer to be read as a right one.
+ *
+ * Use `tabNeverReaches` where *not* being reachable is the point.
+ */
+async function tabUntilFocused(page, locator, max = 25) {
+  const presses = await tabPressesUntilFocused(page, locator, max);
+
+  if (presses === -1) {
+    // Where focus actually ended up is the first thing anyone debugging this
+    // wants, and it is what distinguishes "this element is not focusable at
+    // all" from "the tab ring is shorter than `max` and wrapped past it".
+    const landedOn = await activeElementInfo(page);
+    expect(
+      presses,
+      `Tab never reached this element in ${max} presses, so nothing after this ` +
+        `line is acting on it. Focus ended on ${JSON.stringify(landedOn)}. ` +
+        `Either the element is not focusable and the spec is testing the wrong ` +
+        `focus model, or it is genuinely unreachable by keyboard — both are ` +
+        `real results, and neither is what the rest of this test assumes. ` +
+        `If unreachable is the expected outcome, use tabNeverReaches().`
+    ).toBeGreaterThan(0);
+  }
+
+  return presses;
+}
+
+/**
+ * True when Tab does not reach `locator` within `max` presses.
+ *
+ * The deliberate counterpart to `tabUntilFocused`, for the handful of patterns
+ * whose correct behaviour is to stay out of the tab sequence entirely — a
+ * static table, a read-only meter. Those specs used to call the same helper and
+ * assert the -1 sentinel; saying it this way keeps the magic number out of the
+ * spec, and means the strict wrapper above can be strict for everyone else.
+ */
+async function tabNeverReaches(page, locator, max = 25) {
+  return (await tabPressesUntilFocused(page, locator, max)) === -1;
 }
 
 /**
@@ -367,6 +433,7 @@ module.exports = {
   pressTab,
   pressShiftTab,
   tabUntilFocused,
+  tabNeverReaches,
   isFocused,
   byId,
   expectTabExits,

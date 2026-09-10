@@ -20,7 +20,7 @@
  * inverse of the usual contract — that the meter is *not* a tab stop.
  */
 const { test, expect } = require('@playwright/test');
-const { gotoPattern, tabUntilFocused } = require('./support/apg');
+const { gotoPattern, tabNeverReaches } = require('./support/apg');
 
 const LABEL = 'Disk usage';
 
@@ -119,8 +119,10 @@ test.describe('Meter — keyboard behaviour', () => {
     // A meter is read-only: the APG gives the pattern no keyboard interaction
     // at all. Putting it in the tab sequence would strand a keyboard user on a
     // control with nothing to operate.
-    const presses = await tabUntilFocused(page, meter(page), 10);
-    expect(presses, 'a read-only meter must not take focus').toBe(-1);
+    expect(
+      await tabNeverReaches(page, meter(page), 10),
+      'a read-only meter must not take focus'
+    ).toBe(true);
 
     const focusableInsideMeter = await meter(page).evaluate(
       (el) => el.querySelectorAll('a[href], button, input, select, textarea, [tabindex]').length
