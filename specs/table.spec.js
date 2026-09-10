@@ -26,7 +26,7 @@
  *     rather than merely noted, since a stray tab stop would be a real bug.
  */
 const { test, expect } = require('@playwright/test');
-const { gotoPattern, tabUntilFocused } = require('./support/apg');
+const { gotoPattern, tabNeverReaches } = require('./support/apg');
 
 const CAPTION = 'Employees';
 const HEADERS = ['Name', 'Department', 'Location'];
@@ -116,8 +116,10 @@ test.describe('Table — keyboard behaviour', () => {
     // its own tab stop and the table is never a single composite stop. This
     // fixture holds none, so the honest assertion is that Tab finds nothing
     // inside it — a table that swallowed a tab stop would fail here.
-    const presses = await tabUntilFocused(page, table(page), 10);
-    expect(presses, 'a static table must not take focus itself').toBe(-1);
+    expect(
+      await tabNeverReaches(page, table(page), 10),
+      'a static table must not take focus itself'
+    ).toBe(true);
 
     const focusableInside = await table(page).evaluate(
       (el) => el.querySelectorAll('a[href], button, input, select, textarea, [tabindex]').length
