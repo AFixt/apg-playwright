@@ -285,9 +285,10 @@ test.describe('Tree View — keyboard navigation', () => {
     ).toBe(true);
   });
 
-  // KNOWN GAP — apg-react#155 (Recommended by the APG). TreeView handles no printable
-  // characters. The APG lists type-ahead as Recommended for all trees.
-  test.fail('typing a character moves focus to the next matching node', async ({ page }) => {
+  // Type-ahead is Recommended rather than Required by the APG, and apg-react
+  // implements it (apg-react#155, fixed in v2.2.0). Asserted positively: an
+  // implementation that drops it again should go red here.
+  test('typing a character moves focus to the next matching node', async ({ page }) => {
     await tabUntilFocused(page, item(page, 'Documents'));
     await page.keyboard.press('p');
 
@@ -297,19 +298,19 @@ test.describe('Tree View — keyboard navigation', () => {
 
 test.describe('Tree View — navigating inside an open node', () => {
   /**
-   * KNOWN BUG — apg-react#154, shared root cause for the
-   * three test.fail cases below.
+   * These three cover apg-react#154, fixed in v2.2.0 — a shared root cause, so
+   * they are grouped and worth keeping together.
    *
-   * TreeView renders each child `li[role=treeitem]` *inside* its parent
-   * `li[role=treeitem]`, and puts `onKeyDown` and `onFocus` on every one of
-   * them. Both events bubble, so a keystroke on a nested node is handled twice:
-   * once by the node itself and again by each ancestor treeitem, which then
-   * re-runs the same key against its own position and undoes the child's move.
-   * The bubbled focus handler likewise resets the roving tabindex back to the
-   * ancestor. The effect is that a keyboard user can enter a subtree but cannot
-   * navigate within it, and Shift+Tab returns them to the parent instead of the
-   * node they were on. Root-level navigation is unaffected, which is why this
-   * survives the tests above.
+   * TreeView renders each child `li[role=treeitem]` *inside* its parent, and
+   * put `onKeyDown` and `onFocus` on every one of them. Both events bubble, so
+   * a keystroke on a nested node was handled twice: once by the node itself and
+   * again by each ancestor treeitem, which re-ran the same key against its own
+   * position and undid the child's move. The bubbled focus handler likewise
+   * reset the roving tabindex back to the ancestor. A keyboard user could enter
+   * a subtree but not navigate within it.
+   *
+   * Root-level navigation was never affected, which is why the tests above went
+   * on passing throughout — and why these three are the ones that pin the fix.
    */
 
   /** Open Documents and step into Resume.pdf using only the keyboard. */
@@ -320,32 +321,29 @@ test.describe('Tree View — navigating inside an open node', () => {
     expect(await isFocused(item(page, 'Resume.pdf'))).toBe(true);
   }
 
-  test.fail('the roving tabindex follows focus into a child node', async ({ page }) => {
+  test('the roving tabindex follows focus into a child node', async ({ page }) => {
     await focusFirstChild(page);
 
     await expect(item(page, 'Resume.pdf')).toHaveAttribute('tabindex', '0');
     await expect(item(page, 'Documents')).toHaveAttribute('tabindex', '-1');
   });
 
-  test.fail('Down Arrow on a child moves to the next visible node', async ({ page }) => {
+  test('Down Arrow on a child moves to the next visible node', async ({ page }) => {
     await focusFirstChild(page);
 
     await page.keyboard.press('ArrowDown');
     expect(await isFocused(item(page, 'CoverLetter.pdf'))).toBe(true);
   });
 
-  test.fail(
-    'Left Arrow on a child moves focus to its parent without closing it',
-    async ({ page }) => {
-      // "Left Arrow: When focus is on a child node that is also either an end node
-      // or a closed node, moves focus to its parent node." It moves focus — it
-      // does not also collapse the parent out from under the user.
-      await focusFirstChild(page);
+  test('Left Arrow on a child moves focus to its parent without closing it', async ({ page }) => {
+    // "Left Arrow: When focus is on a child node that is also either an end node
+    // or a closed node, moves focus to its parent node." It moves focus — it
+    // does not also collapse the parent out from under the user.
+    await focusFirstChild(page);
 
-      await page.keyboard.press('ArrowLeft');
-      expect(await isFocused(item(page, 'Documents'))).toBe(true);
-      await expect(item(page, 'Documents')).toHaveAttribute('aria-expanded', 'true');
-      await expect(item(page, 'Resume.pdf')).toBeVisible();
-    }
-  );
+    await page.keyboard.press('ArrowLeft');
+    expect(await isFocused(item(page, 'Documents'))).toBe(true);
+    await expect(item(page, 'Documents')).toHaveAttribute('aria-expanded', 'true');
+    await expect(item(page, 'Resume.pdf')).toBeVisible();
+  });
 });

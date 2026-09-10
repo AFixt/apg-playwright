@@ -135,17 +135,16 @@ test.describe('Carousel — automatic rotation', () => {
   });
 
   test('automatic rotation keeps advancing until the user stops it', async ({ page }) => {
-    // apg-react#150: the interval callback calls the component's own
-    // stopRotation(), so the timer cancels itself on its first tick. The
-    // carousel advances exactly once, then freezes and relabels its control to
-    // "Resume auto-rotation" without the user ever asking it to stop — which
-    // the APG forbids: rotation "does not restart unless the user explicitly
-    // requests it to do so", and by the same token must not stop by itself.
+    // The APG: rotation "does not restart unless the user explicitly requests
+    // it to do so" — and by the same token must not stop by itself.
+    // apg-react#150 had the interval callback call the component's own
+    // stopRotation(), so the timer cancelled itself on its first tick: the
+    // carousel advanced exactly once, then froze and relabelled its control to
+    // "Resume auto-rotation" without the user asking. Fixed in v2.2.0, along
+    // with the hover pause that had no resume counterpart (apg-react#161).
     //
-    // Nothing in this test touches the mouse or the keyboard, so neither the
-    // hover pause nor the focus-entry pause can explain what it observes.
-    // (The hover pause itself is apg-react#161.)
-    test.fail();
+    // Nothing here touches the mouse or the keyboard, so neither the hover
+    // pause nor the focus-entry pause can affect what it observes.
 
     const control = page.getByRole('button', { name: ROTATION });
     await expect(control).toHaveAttribute('aria-label', 'Pause auto-rotation');
@@ -242,11 +241,10 @@ test.describe('Carousel — slide navigation', () => {
 
   test('the picker for the slide already on screen is disabled', async ({ page }) => {
     // APG, grouped carousel: "Each picker button representing the currently
-    // displayed slide has the property aria-disabled set to true." This
-    // implementation marks the current picker with aria-current only, so the
-    // button still advertises itself as an available action that does nothing.
-    // KNOWN GAP — apg-react#162.
-    test.fail();
+    // displayed slide has the property aria-disabled set to true."
+    // apg-react#162 marked the current picker with aria-current only, so the
+    // button still advertised itself as an available action that did nothing.
+    // Fixed in v2.2.0.
 
     await stopRotation(page);
     await page.getByRole('button', { name: 'Select slide 3' }).click();

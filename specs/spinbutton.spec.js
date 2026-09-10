@@ -214,11 +214,10 @@ test.describe('Spinbutton — direct editing', () => {
 });
 
 test.describe('Spinbutton — invalid-input messaging', () => {
-  // KNOWN GAP: apg-react#148 — the spinbutton flips aria-invalid but never
-  // names the problem. aria-invalid alone tells a screen reader user "this is
-  // wrong" without telling them what is wrong or what the allowed range is.
+  // apg-react#148 flipped aria-invalid but never named the problem, which tells
+  // a screen reader user "this is wrong" without telling them what is wrong or
+  // what the allowed range is. Fixed in v2.2.0.
   test('an out-of-range entry is explained by an accessible description', async ({ page }) => {
-    test.fail();
     const spinbutton = page.getByRole('spinbutton', { name: NAME });
     await tabUntilFocused(page, spinbutton);
 
@@ -239,14 +238,12 @@ test.describe('Spinbutton — invalid-input messaging', () => {
 });
 
 test.describe('Spinbutton — clamping must not be reported as invalid', () => {
-  // KNOWN BUG — apg-react#158. Pressing ArrowUp while already
-  // at aria-valuemax correctly leaves the value at the maximum, but also sets
-  // aria-invalid="true". Reaching the end of a range is normal operation, not
-  // a data-entry error — the APG says the key simply has no further effect.
-  // Flagging it means a screen reader announces "invalid entry" for a value
-  // the widget itself just chose and considers in range.
+  // Reaching the end of a range is normal operation, not a data-entry error —
+  // the APG says the key simply has no further effect. apg-react#158 left the
+  // value correctly at the maximum but also set aria-invalid="true", so a
+  // screen reader announced "invalid entry" for a value the widget itself had
+  // just chosen and considered in range. Fixed in v2.2.0.
   test('stepping past the maximum leaves the spinbutton valid', async ({ page }) => {
-    test.fail();
     const spinbutton = page.getByRole('spinbutton', { name: NAME });
     await tabUntilFocused(page, spinbutton);
 

@@ -200,16 +200,13 @@ test.describe('Tooltip — dismissal with Escape', () => {
     await expect(page.getByText(TOP_TEXT)).toBeVisible();
   });
 
-  // KNOWN BUG — apg-react#157. Escape only dismisses the
-  // focus-triggered tooltip. A tooltip opened by hover ignores Escape and stays
-  // up until the pointer moves away. WCAG 1.4.13 (Content on Hover or Focus)
-  // requires a mechanism to dismiss the content "without moving pointer hover
-  // or keyboard focus" — a pointer user whose tooltip covers the text beneath
-  // it has no way to get rid of it, which is the exact situation the criterion
-  // was written for. The APG likewise lists Escape as dismissing the tooltip
-  // without qualifying it by trigger.
+  // WCAG 1.4.13 (Content on Hover or Focus) requires a mechanism to dismiss the
+  // content "without moving pointer hover or keyboard focus", and the APG lists
+  // Escape as dismissing the tooltip without qualifying it by trigger.
+  // apg-react#157 dismissed only the focus-triggered tooltip; one opened by
+  // hover ignored Escape and stayed up until the pointer moved away, leaving a
+  // pointer user no way to uncover the text beneath it. Fixed in v2.2.0.
   test('Escape hides a hover-triggered tooltip', async ({ page }) => {
-    test.fail();
     const trigger = page.getByRole('button', { name: BOTTOM });
 
     await trigger.hover();
@@ -224,18 +221,17 @@ test.describe('Tooltip — dismissal with Escape', () => {
 });
 
 test.describe('Tooltip — identity of concurrently shown tooltips', () => {
-  // KNOWN BUG — apg-react#156. Every tooltip is rendered with
-  // the same hard-coded id="tooltip-text". One at a time that is harmless, but
-  // focus and hover are independent triggers, so focusing one button while
-  // hovering another renders two elements sharing one id. Both triggers then
-  // carry aria-describedby="tooltip-text", and getElementById returns the
-  // first match for both — so the hovered button is announced with the
-  // *focused* button's tooltip text. The user is read a description that
-  // belongs to a different control.
+  // apg-react#156 rendered every tooltip with the same hard-coded
+  // id="tooltip-text". One at a time that is harmless, but focus and hover are
+  // independent triggers, so focusing one button while hovering another
+  // produced two elements sharing one id. Both triggers then carried
+  // aria-describedby="tooltip-text" and getElementById returned the first match
+  // for both, so the hovered button was announced with the *focused* button's
+  // text — a description belonging to a different control. Fixed in v2.2.0 with
+  // per-instance ids, and those ids became selector-safe in v2.3.0.
   test('a hovered trigger is described by its own tooltip while another is focused', async ({
     page,
   }) => {
-    test.fail();
     const top = page.getByRole('button', { name: TOP });
     const right = page.getByRole('button', { name: RIGHT });
 
@@ -256,7 +252,6 @@ test.describe('Tooltip — identity of concurrently shown tooltips', () => {
   });
 
   test('tooltip ids stay unique when two tooltips are shown at once', async ({ page }) => {
-    test.fail();
     const top = page.getByRole('button', { name: TOP });
     const right = page.getByRole('button', { name: RIGHT });
 
