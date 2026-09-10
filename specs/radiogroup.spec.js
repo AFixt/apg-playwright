@@ -88,26 +88,22 @@ test.describe('Radio Group — roles, states, and properties', () => {
 });
 
 test.describe('Radio Group — reaching the group', () => {
-  // KNOWN GAP — apg-react#138: RadioGroup derives each radio's tabindex purely
-  // from its checked state (`tabIndex={selected ? 0 : -1}`), so when nothing is
-  // checked EVERY radio is tabindex="-1" and the whole group drops out of the
-  // tab sequence. The APG requires the opposite: "If none of the radio buttons
-  // are checked, focus is set on the first radio button in the group."
-  // A keyboard-only user cannot reach this control at all.
-  test.fail('the radio group is reachable by Tab from a fresh page load', async ({ page }) => {
+  // The APG: "If none of the radio buttons are checked, focus is set on the
+  // first radio button in the group." apg-react#138 derived each radio's
+  // tabindex purely from its checked state, so with nothing checked every radio
+  // was tabindex="-1" and the group left the tab sequence entirely — a
+  // keyboard-only user could not reach the control at all. Fixed in v2.2.0.
+  test('the radio group is reachable by Tab from a fresh page load', async ({ page }) => {
     const first = page.getByRole('radio', { name: 'Standard' });
     const presses = await tabUntilFocused(page, first);
     expect(presses, 'Tab must reach the first radio when none is checked').toBeGreaterThan(0);
   });
 
-  test.fail(
-    'with nothing checked, exactly one radio is still in the tab ring',
-    async ({ page }) => {
-      // The structural statement of the same defect: a roving tabindex always has
-      // one 0, even before the user has chosen anything.
-      expect(await tabindexes(radiosOf(page))).toEqual(['0', '-1', '-1']);
-    }
-  );
+  test('with nothing checked, exactly one radio is still in the tab ring', async ({ page }) => {
+    // The structural statement of the same requirement: a roving tabindex
+    // always has exactly one 0, even before the user has chosen anything.
+    expect(await tabindexes(radiosOf(page))).toEqual(['0', '-1', '-1']);
+  });
 
   test('once a radio is checked, Tab enters the group on that radio', async ({ page }) => {
     await enterGroupWith(page, 'Overnight');

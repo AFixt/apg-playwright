@@ -90,11 +90,11 @@ test.describe('Tabs — roles, states, and properties', () => {
     ).toBe(true);
   });
 
-  // KNOWN GAP — apg-react#139: the Tabs component renders no aria-label or
-  // aria-labelledby on its tablist, so the tab list has no accessible name.
-  // The APG requires one ("If the tab list has a visible label, the element
-  // with role tablist has aria-labelledby ... otherwise it has aria-label").
-  test.fail('the tablist has an accessible name', async ({ page }) => {
+  // The APG requires one: "If the tab list has a visible label, the element
+  // with role tablist has aria-labelledby ... otherwise it has aria-label".
+  // apg-react#139 left the tablist unnamed; fixed in v2.2.0, and the demo names
+  // it "Sample Tabs" (apg-react#229).
+  test('the tablist has an accessible name', async ({ page }) => {
     await expect(page.getByRole('tablist')).toHaveAccessibleName(/\S/);
   });
 });

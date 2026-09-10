@@ -361,19 +361,19 @@ test.describe('Combobox — text editing in the input', () => {
   // KNOWN GAP — apg-react#153. Backspace cannot reliably shorten the value.
   // The inline completion is re-applied on every keystroke, including
   // deletions, so the field refills itself: typing "aus" then pressing
-  // Backspace walks "Aus" -> "Australia" -> "Au" -> "A" -> "A" ->
-  // "Afghanistan", i.e. deletion sometimes grows the value. The APG requires
-  // the combobox input to support "standard single line text editing keys",
-  // and apg-usecases combobox-keyboard-navigation-input asserts exactly this
-  // (type "hello", Backspace, expect "hell"). With no way to delete, the only
-  // route out of a wrong entry is Escape twice, which discards everything.
+  // The APG requires the combobox input to support "standard single line text
+  // editing keys", and apg-usecases combobox-keyboard-navigation-input asserts
+  // exactly this (type "hello", Backspace, expect "hell"). Inline completion
+  // used to refill the field as fast as Backspace emptied it — the value walked
+  // "Aus" -> "Australia" -> "Au" -> "A" -> "A" -> "Afghanistan", so deletion
+  // sometimes *grew* it, and the only route out of a wrong entry was Escape
+  // twice, discarding everything. Fixed in v2.2.0.
   //
   // These assert the *settled* end state after more Backspaces than there are
   // characters. Asserting a single Backspace would be racy: the value really
   // does shorten for a moment before the completion refills it, and a
   // retrying assertion can catch that transient and report success.
   test('Backspace can clear a typed entry', async ({ page }) => {
-    test.fail();
     const combobox = page.getByRole('combobox', { name: LABEL });
     await tabUntilFocused(page, combobox);
 
@@ -390,7 +390,6 @@ test.describe('Combobox — text editing in the input', () => {
   });
 
   test('Backspace can clear a value chosen from the popup', async ({ page }) => {
-    test.fail();
     const combobox = page.getByRole('combobox', { name: LABEL });
     await tabUntilFocused(page, combobox);
 
@@ -407,14 +406,12 @@ test.describe('Combobox — text editing in the input', () => {
 });
 
 test.describe('Combobox — aria-haspopup', () => {
-  // KNOWN GAP: apg-react#142. Note that the APG only *requires* aria-haspopup
-  // "if the popup has a role other than listbox", so a listbox popup is within
-  // the letter of the pattern without it. Stating it explicitly is still the
-  // more robust choice — several screen readers key their "has a popup"
-  // announcement off the attribute rather than off the implicit default — so
-  // the assertion is written faithfully and marked failing until #142 lands.
+  // The APG only *requires* aria-haspopup "if the popup has a role other than
+  // listbox", so a listbox popup was within the letter of the pattern without
+  // it. Stating it explicitly is still the more robust choice — several screen
+  // readers key their "has a popup" announcement off the attribute rather than
+  // off the implicit default — and apg-react#142 added it in v2.2.0.
   test('the combobox declares the kind of popup it owns', async ({ page }) => {
-    test.fail();
     const combobox = page.getByRole('combobox', { name: LABEL });
     await tabUntilFocused(page, combobox);
     await page.keyboard.press('ArrowDown');
@@ -425,14 +422,13 @@ test.describe('Combobox — aria-haspopup', () => {
 });
 
 test.describe('Combobox — no-match state', () => {
-  // KNOWN GAP — apg-react#152. When the typed text matches
-  // nothing, the listbox is removed from the DOM but aria-expanded stays
-  // "true" and aria-activedescendant keeps pointing at an option id that no
-  // longer resolves. A screen reader is told a popup is open, told which
-  // option is current, and can find neither — the user is stranded with no
-  // signal that the search failed.
+  // apg-react#152: when the typed text matched nothing, the listbox was removed
+  // from the DOM but aria-expanded stayed "true" and aria-activedescendant kept
+  // pointing at an option id that no longer resolved. A screen reader was told
+  // a popup was open, told which option was current, and could find neither —
+  // the user stranded with no signal that the search had failed. Fixed in
+  // v2.2.0.
   test('a search with no matches collapses the combobox', async ({ page }) => {
-    test.fail();
     const combobox = page.getByRole('combobox', { name: LABEL });
     await tabUntilFocused(page, combobox);
 
@@ -446,7 +442,6 @@ test.describe('Combobox — no-match state', () => {
   });
 
   test('a search with no matches drops the dangling aria-activedescendant', async ({ page }) => {
-    test.fail();
     const combobox = page.getByRole('combobox', { name: LABEL });
     await tabUntilFocused(page, combobox);
 

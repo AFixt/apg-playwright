@@ -165,23 +165,20 @@ test.describe('Button — toggle button', () => {
   // change when its state changes" — the pressed state is already carried by
   // aria-pressed, and a shifting name makes the control unfindable by name for
   // voice-control users and re-announces as a different control to screen
-  // reader users. The fix is to move the tick into an aria-hidden element (or
-  // drop it in favour of the existing colour/inset-shadow treatment) rather
-  // than to weaken this assertion.
-  test.fail(
-    'the accessible name does not change when the toggle becomes pressed',
-    async ({ page }) => {
-      const mute = muteButton(page);
+  // reader users. apg-react fixed this by moving the tick out of the accessible
+  // name rather than by weakening the assertion, which is why it is asserted
+  // positively here now.
+  test('the accessible name does not change when the toggle becomes pressed', async ({ page }) => {
+    const mute = muteButton(page);
 
-      await expect(mute).toHaveAccessibleName('Mute');
+    await expect(mute).toHaveAccessibleName('Mute');
 
-      await tabUntilFocused(page, mute);
-      await page.keyboard.press('Enter');
+    await tabUntilFocused(page, mute);
+    await page.keyboard.press('Enter');
 
-      await expect(mute).toHaveAttribute('aria-pressed', 'true');
-      await expect(mute).toHaveAccessibleName('Mute');
-    }
-  );
+    await expect(mute).toHaveAttribute('aria-pressed', 'true');
+    await expect(mute).toHaveAccessibleName('Mute');
+  });
 });
 
 test.describe('Button — unavailable action', () => {
