@@ -43,9 +43,14 @@ test.describe('Link — roles and accessible names', () => {
     // Scoped to the demo itself: this assertion is about the links the Link
     // demo renders, not whatever page chrome apg-react wraps around it.
     // Unscoped, the count tracks apg-react's page furniture rather than the
-    // pattern under test -- AFixt/apg-react#241 proposes a "back to the demo
-    // index" link on every demo page for WCAG 2.4.5, which would land outside
-    // `.demo-page` and make this four.
+    // pattern under test. AFixt/apg-react#241 landed a "back to the demo index"
+    // link on every demo page for WCAG 2.4.5 (merged 2026-09-09), rendered by
+    // demos/src/mount.tsx as a sibling of `.demo-page` inside `#demo-root`, so
+    // it is outside the demo and makes the unscoped count four.
+    //
+    // Measured against the demo server: unscoped this assertion fails
+    // "Expected: 3 / Received: 4"; scoped it passes. The scoping is therefore
+    // load-bearing, not defensive -- do not simplify it away.
     // apg-cypress and apg-nightwatch already scope the same assertion this way.
     await expect(page.locator('.demo-page').getByRole('link')).toHaveCount(LINKS.length);
 
