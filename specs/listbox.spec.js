@@ -14,15 +14,23 @@
  *     single-select listbox only, and apg-react ships no multi-select listbox
  *     demo (apg-react#142). There is no aria-multiselectable widget on the page
  *     to drive, so those scenarios cannot be exercised faithfully here.
- *   - listbox-disabled-options, listbox-dynamic-loading,
- *     listbox-rearranging-options, listbox-scrolling-behavior: this listbox has
- *     five always-present, always-enabled, statically ordered options.
+ *   - listbox-dynamic-loading, listbox-rearranging-options,
+ *     listbox-scrolling-behavior: this listbox has six statically ordered
+ *     options.
  *
- * Focus model note: the APG permits either aria-activedescendant on the
- * container or a roving tabindex over the options. This listbox implements the
- * roving tabindex variant — DOM focus lands on the option itself and the
- * container carries tabindex="-1" — so the activedescendant use case is
- * expressed here as its roving-tabindex equivalent.
+ * Focus model: the APG permits either aria-activedescendant on the container or
+ * a roving tabindex over the options. apg-react's Listbox supports both through
+ * a `focusModel` prop, and **this demo opts into "activedescendant"** — the
+ * model the APG's own listbox examples use, chosen because under roving
+ * tabindex a caller that focuses the listbox itself gets no option handler at
+ * all (apg-react#213). DOM focus therefore stays on the container and the active
+ * option is named by aria-activedescendant; no option is ever the activeElement,
+ * and no option carries a tabindex.
+ *
+ * These specs previously asserted the roving-tabindex variant, which is what the
+ * demo used when they were written. Asserting DOM focus on an option is the
+ * thing to avoid here: it is not what this widget promises, and under
+ * activedescendant it can never be true.
  */
 const { test, expect } = require('@playwright/test');
 const {
@@ -34,9 +42,29 @@ const {
   markOptional,
 } = require('./support/apg');
 
-const FRUITS = ['Apple', 'Banana', 'Cherry', 'Date', 'Elderberry'];
+const FRUITS = ['Apple', 'Banana', 'Cherry', 'Date', 'Durian', 'Elderberry'];
+/** Deliberately aria-disabled in the demo, and deliberately not last. */
+const DISABLED = 'Durian';
 
-const optionsOf = (page) => page.getByRole('listbox', { name: 'Fruits' }).getByRole('option');
+const listboxOf = (page) => page.getByRole('listbox', { name: 'Fruits' });
+const optionsOf = (page) => listboxOf(page).getByRole('option');
+const optionOf = (page, name) => page.getByRole('option', { name, exact: true });
+
+/**
+ * Assert the listbox names this option as its active descendant.
+ *
+ * The activedescendant counterpart of `isFocused()`. It reads the option's own
+ * id rather than comparing against a literal, because apg-react scopes ids per
+ * instance with React's `useId` — the same reason `byId()` exists.
+ */
+async function expectActive(page, name) {
+  // The option has to carry an id at all before aria-activedescendant can name
+  // it, so assert that first — otherwise a missing id would compare null to
+  // null and pass.
+  await expect(optionOf(page, name)).toHaveAttribute('id', /\S/);
+  const id = await optionOf(page, name).getAttribute('id');
+  await expect(listboxOf(page)).toHaveAttribute('aria-activedescendant', id);
+}
 
 test.beforeEach(async ({ page }) => {
   await gotoPattern(page, 'listbox');
@@ -87,12 +115,24 @@ test.describe('Listbox — roles, states, and properties', () => {
     const listbox = page.getByRole('listbox', { name: 'Fruits' });
     await expect(listbox).not.toHaveAttribute('aria-orientation', 'horizontal');
 
-    await tabUntilFocused(page, page.getByRole('option', { name: 'Apple' }));
+    await tabUntilFocused(page, listboxOf(page));
     await page.keyboard.press('ArrowDown');
-    expect(
-      await isFocused(page.getByRole('option', { name: 'Banana' })),
-      'a vertical listbox must respond to Down Arrow'
-    ).toBe(true);
+    // A vertical listbox must respond to Down Arrow.
+    await expectActive(page, 'Banana');
+  });
+
+  test('the disabled option stays in the list and announces itself as disabled', async ({
+    page,
+  }) => {
+    // The APG keeps a disabled option present and reachable rather than removing
+    // it, so a user can discover it exists instead of wondering why the list is
+    // shorter than they expected.
+    await expect(optionOf(page, DISABLED)).toHaveAttribute('aria-disabled', 'true');
+
+    const disabledCount = await optionsOf(page).evaluateAll(
+      (els) => els.filter((el) => el.getAttribute('aria-disabled') === 'true').length
+    );
+    expect(disabledCount, 'aria-disabled must not leak onto its neighbours').toBe(1);
   });
 });
 
@@ -112,7 +152,7 @@ test.describe('Listbox — selection', () => {
   test('arrowing moves selection with focus, one option at a time', async ({ page }) => {
     // The APG allows a single-select listbox to move selection with focus.
     // What it does not allow is more than one option being selected at once.
-    await tabUntilFocused(page, page.getByRole('option', { name: 'Apple' }));
+    await tabUntilFocused(page, listboxOf(page));
 
     await page.keyboard.press('ArrowDown');
     await expect(page.getByRole('option', { name: 'Banana' })).toHaveAttribute(
@@ -135,104 +175,133 @@ test.describe('Listbox — selection', () => {
     );
     expect(selected, 'a single-select listbox must never hold two selections').toBe(1);
   });
+
+  test('the disabled option cannot be selected by pointer', async ({ page }) => {
+    await optionOf(page, 'Banana').click();
+
+    // Playwright treats aria-disabled="true" as not-enabled and refuses to click
+    // it, which is the tooling honouring the same semantic a user agent does.
+    // Asserting that first is worth more than working around it.
+    await expect(optionOf(page, DISABLED)).toBeDisabled();
+
+    // Then force the click past actionability, because the CSS is only
+    // `cursor: not-allowed` — there is no pointer-events guard, so a real click
+    // does reach the handler. This asserts the handler itself is defensive
+    // rather than relying on a cursor style to protect it.
+    // Bypassing actionability is the point: it is what lets us assert the
+    // handler is defensive rather than trusting the aria-disabled check above.
+    // eslint-disable-next-line playwright/no-force-option
+    await optionOf(page, DISABLED).click({ force: true });
+
+    await expect(optionOf(page, DISABLED)).toHaveAttribute('aria-selected', 'false');
+    // The previous selection is left alone rather than silently cleared.
+    await expect(optionOf(page, 'Banana')).toHaveAttribute('aria-selected', 'true');
+  });
 });
 
 test.describe('Listbox — keyboard navigation', () => {
-  test('Tab lands on the first option without changing the selection', async ({ page }) => {
+  test('Tab lands on the listbox without changing the selection', async ({ page }) => {
     // "If none of the options are selected before the listbox receives focus,
-    // the first option receives focus." Arriving must not silently pick one.
-    const apple = page.getByRole('option', { name: 'Apple' });
-    const presses = await tabUntilFocused(page, apple);
+    // the first option receives focus." Under the activedescendant model that
+    // means the container takes DOM focus and names the first option as active.
+    // Arriving must not silently select one.
+    const presses = await tabUntilFocused(page, listboxOf(page));
     expect(presses, 'the listbox must be reachable by Tab').toBeGreaterThan(0);
 
-    await expect(apple).toHaveAttribute('aria-selected', 'false');
+    await expectActive(page, 'Apple');
+    const selected = await optionsOf(page).evaluateAll(
+      (els) => els.filter((el) => el.getAttribute('aria-selected') === 'true').length
+    );
+    expect(selected, 'arriving must not select anything').toBe(0);
   });
 
-  test('the listbox is a single tab stop with a roving tabindex over the options', async ({
+  test('the listbox is a single tab stop and the options are not in the tab ring', async ({
     page,
   }) => {
-    await tabUntilFocused(page, page.getByRole('option', { name: 'Apple' }));
+    await tabUntilFocused(page, listboxOf(page));
 
-    // The container itself is removed from the tab ring; the options carry it.
-    await expect(page.getByRole('listbox', { name: 'Fruits' })).toHaveAttribute('tabindex', '-1');
-    expect(await tabindexes(optionsOf(page))).toEqual(['0', '-1', '-1', '-1', '-1']);
+    // The container holds focus; the options are named, not focused.
+    await expect(listboxOf(page)).toHaveAttribute('tabindex', '0');
+    expect(await tabindexes(optionsOf(page))).toEqual([null, null, null, null, null, null]);
 
     await expectTabExits(
       page,
-      page.getByRole('listbox', { name: 'Fruits' }),
+      listboxOf(page),
       'Tab must leave the listbox rather than walk its options'
     );
   });
 
-  test('the roving tabindex follows focus as arrow keys move it', async ({ page }) => {
-    const options = optionsOf(page);
-    await tabUntilFocused(page, page.getByRole('option', { name: 'Apple' }));
+  test('aria-activedescendant follows the arrow keys', async ({ page }) => {
+    await tabUntilFocused(page, listboxOf(page));
 
     await page.keyboard.press('ArrowDown');
-    expect(await isFocused(page.getByRole('option', { name: 'Banana' }))).toBe(true);
-    expect(await tabindexes(options)).toEqual(['-1', '0', '-1', '-1', '-1']);
+    await expectActive(page, 'Banana');
 
     await page.keyboard.press('ArrowDown');
-    expect(await tabindexes(options)).toEqual(['-1', '-1', '0', '-1', '-1']);
+    await expectActive(page, 'Cherry');
 
     await page.keyboard.press('ArrowUp');
-    expect(await tabindexes(options)).toEqual(['-1', '0', '-1', '-1', '-1']);
+    await expectActive(page, 'Banana');
+
+    // Focus never leaves the container while the active option changes.
+    expect(await isFocused(listboxOf(page))).toBe(true);
   });
 
-  test('Down Arrow and Up Arrow step through the options', async ({ page }) => {
-    const [apple, banana, cherry] = ['Apple', 'Banana', 'Cherry'].map((name) =>
-      page.getByRole('option', { name })
-    );
+  test('arrowing onto the disabled option still reaches it', async ({ page }) => {
+    // The APG keeps disabled options navigable: skipping them would hide their
+    // existence from exactly the users who navigate by keyboard.
+    await tabUntilFocused(page, listboxOf(page));
+    for (let i = 0; i < 3; i += 1) {
+      await page.keyboard.press('ArrowDown');
+    }
+    await expectActive(page, 'Date');
 
-    await tabUntilFocused(page, apple);
     await page.keyboard.press('ArrowDown');
-    expect(await isFocused(banana)).toBe(true);
+    await expectActive(page, DISABLED);
+    await expect(optionOf(page, DISABLED)).toHaveAttribute('aria-selected', 'false');
+
     await page.keyboard.press('ArrowDown');
-    expect(await isFocused(cherry)).toBe(true);
-    await page.keyboard.press('ArrowUp');
-    expect(await isFocused(banana)).toBe(true);
+    await expectActive(page, 'Elderberry');
   });
 
   test('Home moves to the first option and End to the last', async ({ page }) => {
     markOptional('Listbox § Keyboard Interaction — Home and End are marked "(Optional)"');
 
-    const apple = page.getByRole('option', { name: 'Apple' });
-    const elderberry = page.getByRole('option', { name: 'Elderberry' });
-
-    await tabUntilFocused(page, apple);
+    await tabUntilFocused(page, listboxOf(page));
     await page.keyboard.press('End');
-    expect(await isFocused(elderberry)).toBe(true);
-    await expect(elderberry).toHaveAttribute('aria-selected', 'true');
+    await expectActive(page, 'Elderberry');
+    await expect(optionOf(page, 'Elderberry')).toHaveAttribute('aria-selected', 'true');
 
     await page.keyboard.press('Home');
-    expect(await isFocused(apple)).toBe(true);
-    await expect(apple).toHaveAttribute('aria-selected', 'true');
+    await expectActive(page, 'Apple');
+    await expect(optionOf(page, 'Apple')).toHaveAttribute('aria-selected', 'true');
   });
 
   test('arrow navigation stops at both ends rather than wrapping', async ({ page }) => {
     // Unlike tabs, radios and menubars, the APG's listbox arrow keys simply
     // "move focus to the next/previous option" — there is no wrap, and adding
     // one would silently jump the user across the whole list.
-    const apple = page.getByRole('option', { name: 'Apple' });
-    const elderberry = page.getByRole('option', { name: 'Elderberry' });
-
-    await tabUntilFocused(page, apple);
+    await tabUntilFocused(page, listboxOf(page));
     await page.keyboard.press('ArrowUp');
-    expect(await isFocused(apple), 'Up Arrow on the first option must not wrap').toBe(true);
+    // Up Arrow on the first option must not wrap.
+    await expectActive(page, 'Apple');
 
     await page.keyboard.press('End');
     await page.keyboard.press('ArrowDown');
-    expect(await isFocused(elderberry), 'Down Arrow on the last option must not wrap').toBe(true);
+    // Down Arrow on the last option must not wrap.
+    await expectActive(page, 'Elderberry');
   });
 
-  // KNOWN GAP — apg-react#155 (Recommended by the APG). The Listbox handles
-  // no printable characters, so type-ahead does nothing. The APG lists
-  // type-ahead as Recommended for all listboxes, and this one has five options.
-  // Written faithfully and marked test.fail so it turns red the day it lands.
-  test.fail('typing a character moves focus to the next matching option', async ({ page }) => {
-    await tabUntilFocused(page, page.getByRole('option', { name: 'Apple' }));
+  // The APG lists type-ahead as Recommended for all listboxes.
+  //
+  // This was a KNOWN GAP (apg-react#155): Listbox handled no printable
+  // characters, so type-ahead did nothing. apg-react implemented it across
+  // Listbox, TreeView and Menubar, and closed the issue — so the test.fail
+  // marker that guarded it is gone.
+  test('typing a character moves focus to the next matching option', async ({ page }) => {
+    await tabUntilFocused(page, listboxOf(page));
     await page.keyboard.press('c');
 
-    expect(await isFocused(page.getByRole('option', { name: 'Cherry' }))).toBe(true);
+    await expectActive(page, 'Cherry');
   });
 });
