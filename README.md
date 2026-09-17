@@ -112,6 +112,28 @@ Husky installs a pre-commit hook that runs ESLint, Prettier and markdownlint ove
 
 Hand-rolling either pattern inside a spec would produce a test that cannot fail, so neither is stubbed out here.
 
+## The `smol-toml` override
+
+`package.json` carries one `overrides` entry, pinning `smol-toml` to `^1.8.0`. It exists
+because `markdownlint-cli2` — at its latest release — depends on `smol-toml@1.7.0`, and
+everything at or below `1.7.0` carries
+[GHSA-7w5x-hrqm-74c2](https://github.com/advisories/GHSA-7w5x-hrqm-74c2), a high-severity
+denial of service via malformed TOML.
+
+Worth knowing before anyone runs `npm audit fix --force`: npm reports the fix as
+`markdownlint-cli2@0.21.0`, which is a **downgrade** from what is installed — and would not
+clear the advisory anyway, because no published markdownlint-cli2 depends on a patched
+`smol-toml`.
+
+It is safe here for a reason that was tested rather than assumed: `smol-toml` is
+markdownlint-cli2's TOML config parser, and this repository configures it with
+`.markdownlint-cli2.jsonc`, so the parser is never reached in normal use. Beyond that,
+markdownlint-cli2 was run against a TOML config under the override and behaved correctly —
+a valid `--config *.toml` applied its rules, and a deliberately malformed one produced a
+`smol-toml` parse error with line and column.
+
+**Remove it** when markdownlint-cli2 ships a release depending on `smol-toml >= 1.7.1`.
+
 ## Related
 
 - [apg-gherkin](https://github.com/AFixt/apg-gherkin) — the same patterns as Gherkin features
