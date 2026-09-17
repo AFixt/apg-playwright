@@ -436,7 +436,6 @@ function markOptional(basis) {
 
 module.exports = {
   markOptional,
-  demoPath,
   gotoPattern,
   activeElementInfo,
   pressTab,

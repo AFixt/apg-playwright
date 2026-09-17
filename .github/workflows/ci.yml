@@ -80,6 +80,12 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      # Kept at zero, so an orphaned file, an export nobody imports or an
+      # unused dependency means this change introduced one. ESLint sees a
+      # single file at a time and catches none of the three.
+      - name: Unused files, exports and dependencies
+        run: npm run knip
+
       - name: Prettier
         run: npm run format:check
 

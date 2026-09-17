@@ -1,0 +1,13 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema-jsonc.json",
+
+  // Deliberately empty beyond the schema. Knip's Playwright plugin reads
+  // playwright.config.js and treats specs/**/*.spec.js as entries, which pulls
+  // in specs/support/apg.js through the import graph — so there is nothing to
+  // restate and no false positive to suppress.
+  //
+  // This file is the declared home for exceptions. Add a narrow
+  // `entry`/`ignore`/`ignoreDependencies` rule with the reason next to it,
+  // rather than switching off a category. The report is kept at zero, which is
+  // what makes any output meaningful.
+}
