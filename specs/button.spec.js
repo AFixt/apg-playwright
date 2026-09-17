@@ -20,7 +20,7 @@
  *     button that opens a menu.
  */
 const { test, expect } = require('@playwright/test');
-const { gotoPattern, tabUntilFocused, isFocused, pressTab } = require('./support/apg');
+const { gotoPattern, tabUntilFocused, isFocused } = require('./support/apg');
 
 test.beforeEach(async ({ page }) => {
   await gotoPattern(page, 'button');
@@ -201,33 +201,28 @@ test.describe('Button — unavailable action', () => {
     await expect(page.getByText('Print dialog opened')).toBeVisible();
   });
 
-  test('Tab moves past the unavailable button', async ({ page }) => {
-    // Documents what the component does today: `disabled` removes Submit from
-    // the tab ring entirely. The APG would rather it stayed reachable — see
-    // the failing test below.
-    const mute = page.getByRole('button', { name: 'Mute' });
-    await tabUntilFocused(page, mute);
-
-    await pressTab(page);
-
-    const submit = page.getByRole('button', { name: 'Submit' });
-    expect(await isFocused(submit), 'a natively disabled button is skipped by Tab').toBe(false);
-  });
-
-  // KNOWN GAP — apg-react#139 (Button aria-disabled).
   // APG: "When the action associated with a button is unavailable, the button
-  // has aria-disabled set to true." The component uses the native `disabled`
-  // attribute instead, which drops the control out of the tab sequence
-  // altogether — a keyboard or screen reader user never discovers that a
-  // Submit button exists, let alone why it is unavailable.
-  test.fail(
-    'an unavailable button stays discoverable and reports aria-disabled',
-    async ({ page }) => {
-      const submit = page.getByRole('button', { name: 'Submit' });
+  // has aria-disabled set to true." The point is discovery — a natively
+  // disabled button leaves the tab order entirely, so a keyboard or screen
+  // reader user never finds out that a Submit button exists, let alone why it
+  // is unavailable.
+  //
+  // This was a KNOWN GAP (apg-react#139), but not in the way it looked. The
+  // component gained `disabledStyle: 'native' | 'aria'` when #139 was fixed;
+  // what lagged was the demo, which kept the 'native' default until
+  // apg-react#250. The test that used to sit above this one — asserting Tab
+  // SKIPS Submit — documented that demo, and is gone rather than inverted,
+  // because reachability is what this test already proves.
+  test('an unavailable button stays discoverable and reports aria-disabled', async ({ page }) => {
+    const submit = page.getByRole('button', { name: 'Submit' });
 
-      const presses = await tabUntilFocused(page, submit);
-      expect(presses, 'an aria-disabled button must remain in the tab sequence').toBeGreaterThan(0);
-      await expect(submit).toHaveAttribute('aria-disabled', 'true');
-    }
-  );
+    const presses = await tabUntilFocused(page, submit);
+    expect(presses, 'an aria-disabled button must remain in the tab sequence').toBeGreaterThan(0);
+    await expect(submit).toHaveAttribute('aria-disabled', 'true');
+
+    // Reachable is only useful if the reason is reachable too.
+    await expect(submit).toHaveAccessibleDescription(
+      'Complete every required field before submitting.'
+    );
+  });
 });
