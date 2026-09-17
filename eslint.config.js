@@ -50,7 +50,10 @@ module.exports = [
       // teach the rule to recognise them rather than have every caller look
       // like a test with no expectations. The glob only catches helpers
       // defined in the same file, so shared ones are named outright.
-      'playwright/expect-expect': ['warn', { assertFunctionNames: ['expect*', 'expectTabExits'] }],
+      'playwright/expect-expect': [
+        'warn',
+        { assertFunctionNames: ['expect*', 'expectTabExits', 'expectActive'] },
+      ],
     },
   },
 ];
