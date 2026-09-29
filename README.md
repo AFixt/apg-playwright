@@ -95,7 +95,7 @@ The suite follows the AFixt standard tooling, so the same commands work here as 
 | `npm run security:trufflehog` | TruffleHog over the full git history, verified secrets only  |
 | `npm run test:scripts`        | `node:test` suite for the repo's own scripts (`tests/`)      |
 | `npm run check`               | lint + knip + format + markdown                              |
-| `npm run check:all`           | `check` plus duplication and licences                        |
+| `npm run check:all`           | `check` plus duplication, licences and `test:scripts`        |
 
 `.github/workflows/ci.yml` runs the linters, the duplication check, `npm audit` and the full three-engine suite on every pull request. `.github/workflows/security.yml` runs the slower scans — CodeQL, OSV-Scanner, Semgrep's OWASP Top 10 rules, and the licence check — on every pull request too. There is no Dependabot: dependency updates are raised by hand through the repository's own tooling, on demand.
 

@@ -24,7 +24,7 @@
     "markdownlint": "markdownlint-cli2 \"**/*.md\" \"#node_modules\"",
     "markdownlint:fix": "markdownlint-cli2 --fix \"**/*.md\" \"#node_modules\"",
     "check": "npm run lint && npm run knip && npm run format:check && npm run markdownlint",
-    "check:all": "npm run check && npm run dupes && npm run license:check",
+    "check:all": "npm run check && npm run dupes && npm run license:check && npm run test:scripts",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "dupes": "jscpd",
