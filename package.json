@@ -28,7 +28,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "dupes": "jscpd",
-    "license:check": "license-checker-rseidelsohn --onlyAllow 'MIT;ISC;Apache-2.0;BSD-2-Clause;BSD-3-Clause;0BSD;CC0-1.0;CC-BY-3.0;CC-BY-4.0;Unlicense;Python-2.0;WTFPL;BlueOak-1.0.0' --excludePrivatePackages --summary",
+    "license:check": "license-checker-rseidelsohn --onlyAllow 'MIT;ISC;Apache-2.0;BSD-2-Clause;BSD-3-Clause;0BSD;CC0-1.0;CC-BY-3.0;CC-BY-4.0;Unlicense;Python-2.0;PSF-2.0;WTFPL;BlueOak-1.0.0' --excludePrivatePackages --summary",
     "security:audit": "npm audit --audit-level=high",
     "security:trufflehog": "bash scripts/run-trufflehog.sh",
     "test:scripts": "node --test \"tests/**/*.test.js\"",
@@ -36,18 +36,18 @@
     "prepare": "husky"
   },
   "devDependencies": {
-    "@eslint/js": "^9.33.0",
-    "@playwright/test": "^1.54.0",
-    "eslint": "^9.33.0",
-    "eslint-plugin-playwright": "^2.2.0",
-    "globals": "^16.3.0",
+    "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.63.0",
+    "eslint": "^10.11.0",
+    "eslint-plugin-playwright": "^2.12.0",
+    "globals": "^17.12.0",
     "husky": "^9.1.7",
-    "jscpd": "^4.3.0",
-    "knip": "^6.34.0",
+    "jscpd": "^5.3.3",
+    "knip": "^6.39.0",
     "license-checker-rseidelsohn": "^4.4.2",
     "lint-staged": "^16.4.0",
-    "markdownlint-cli2": "^0.23.2",
-    "prettier": "^3.9.6"
+    "markdownlint-cli2": "^0.23.3",
+    "prettier": "^3.9.9"
   },
   "overrides": {
     "smol-toml": "^1.8.0"
