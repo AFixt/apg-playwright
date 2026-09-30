@@ -1,0 +1,19 @@
+# Secret gate FIRST: it is the cheapest check (diff-scoped) and the only
+# irreversible one — a pushed credential must be rotated regardless. Running it
+# first means you learn in seconds, and no earlier `exit` in this hook can skip
+# it. The gate scans with trufflehog, scoped to the commits being pushed.
+#
+# "$@" is the remote name and URL git hands this hook; the gate uses them to
+# scope the scan to commits not yet on that remote.
+#
+# Guarded because .husky/pre-push is tracked: without ~/.fleet-security the
+# missing file returns 127, and `|| exit 1` would block every push. Installed
+# but not executable is a broken install, reported rather than skipped
+# silently — a scan that did not run looks exactly like a clean one.
+FLEET_SECRET_GATE="$HOME/.fleet-security/bin/pre-push-secrets"
+if [ -x "$FLEET_SECRET_GATE" ]; then
+  "$FLEET_SECRET_GATE" "$@" || exit 1
+elif [ -e "$FLEET_SECRET_GATE" ]; then
+  echo "  warn: $FLEET_SECRET_GATE is present but not executable." >&2
+  echo "        The pre-push secret scan was SKIPPED. chmod +x it, or remove it." >&2
+fi
