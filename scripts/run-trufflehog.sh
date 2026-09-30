@@ -9,7 +9,16 @@
 #
 #   TRUFFLEHOG_RESULTS       optional trufflehog --results filter, e.g.
 #                            "verified,unknown,unverified". Unset means
-#                            --only-verified, which is what the hooks use.
+#                            "verified,unknown", which is what the hooks use.
+#
+# Why "verified,unknown" and not --only-verified (see
+# AFixt/detect-features#112): trufflehog files a candidate whose verification
+# could not complete (connection refused, or a verification request that
+# timed out on a loaded machine) under "unknown", not "verified".
+# --only-verified dropped those and exited 0, so a live secret staged on a
+# busy or offline machine passed the hook as clean. A scan that could not
+# decide now blocks instead. "unverified" (the provider answered and said
+# no) stays excluded, as before.
 #
 # Ported from AFixt/shareable#191 (issue #54 here).
 set -euo pipefail
@@ -23,7 +32,7 @@ fi
 if [ -n "${TRUFFLEHOG_RESULTS:-}" ]; then
   RESULTS_FLAG="--results=${TRUFFLEHOG_RESULTS}"
 else
-  RESULTS_FLAG="--only-verified"
+  RESULTS_FLAG="--results=verified,unknown"
 fi
 
 if [ "${TRUFFLEHOG_MODE:-full}" = "staged" ]; then
@@ -50,10 +59,28 @@ if [ "${TRUFFLEHOG_MODE:-full}" = "staged" ]; then
 
   # Deletions are excluded: they add nothing to scan. A gitlink (submodule
   # pointer) has no content of its own, and checkout-index writes none for it.
-  git diff --cached --name-only --diff-filter=ACMRT -z \
-    | git checkout-index --prefix="$WORK/files/" -z --stdin
+  # --ignore-submodules=all leaves gitlinks out of the list, so every path
+  # left in it must come out of checkout-index as exactly one file or symlink.
+  git diff --cached --name-only --diff-filter=ACMRT --ignore-submodules=all -z \
+    >"$WORK/paths"
+  mkdir "$WORK/files"
+  git checkout-index --prefix="$WORK/files/" -z --stdin <"$WORK/paths"
 
-  if [ ! -d "$WORK/files" ] || [ -z "$(ls -A "$WORK/files")" ]; then
+  # Refuse to call anything clean that was not exported for scanning (see
+  # AFixt/detect-features#112). Without this, an export that silently wrote
+  # fewer files than are staged would be scanned as if complete, and one
+  # that wrote none would take the "nothing staged" exit below and pass the
+  # commit unscanned. On a case-insensitive filesystem, two staged paths
+  # differing only in case export to one file; that blocks too, correctly,
+  # since one went unscanned.
+  STAGED="$(tr -cd '\0' <"$WORK/paths" | wc -c | tr -d ' ')"
+  EXPORTED="$(find "$WORK/files" \( -type f -o -type l \) -print0 | tr -cd '\0' | wc -c | tr -d ' ')"
+  if [ "$STAGED" != "$EXPORTED" ]; then
+    echo "trufflehog: exported ${EXPORTED} of ${STAGED} staged files; refusing to report a partial scan as clean." >&2
+    exit 1
+  fi
+
+  if [ "$STAGED" = "0" ]; then
     echo "trufflehog: nothing staged with content to scan."
     exit 0
   fi

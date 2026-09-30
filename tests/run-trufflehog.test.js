@@ -12,20 +12,21 @@
  *
  * The canary is a random GitHub-token-shaped string built at run time, so no
  * credential-shaped literal lives in this file. It is not a real token; it can
- * never verify, so the tests widen the result filter with TRUFFLEHOG_RESULTS
- * instead of relying on the hook's --only-verified default. What is under test
- * is whether the staged content reaches the scanner at all.
+ * never verify, so most tests widen the result filter with TRUFFLEHOG_RESULTS
+ * instead of relying on the hook's default. What is under test is whether the
+ * staged content reaches the scanner at all.
  *
  * This repo's Playwright runner is for the APG specs only, so these use the
  * built-in node:test runner: `npm run test:scripts`. Skipped when trufflehog
  * is not installed, exactly as the script itself skips.
  */
 
-const { spawnSync } = require('node:child_process');
-const { randomBytes } = require('node:crypto');
+const { execFile, spawn, spawnSync } = require('node:child_process');
+const { randomInt } = require('node:crypto');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
+const { promisify } = require('node:util');
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert/strict');
 
@@ -35,10 +36,66 @@ const FOUND = 183;
 const hasTrufflehog = spawnSync('trufflehog', ['--version'], { encoding: 'utf8' }).status === 0;
 const skip = hasTrufflehog ? false : 'trufflehog is not installed';
 
-/** A fresh, random, never-valid GitHub-PAT-shaped string. */
+/**
+ * How long one scan may take before the test kills it and fails with a
+ * message saying so (AFixt/detect-features#112). Unloaded, a run takes a few
+ * seconds; on a heavily loaded machine one took minutes. The scans are
+ * asynchronous because node:test cannot time out synchronous code: a
+ * spawnSync that hangs would hang the suite silently, and the per-test
+ * timeout would never fire. A run past the deadline is rejected before it is
+ * stopped, so whatever status it exits with is ignored: the deadline can only
+ * ever fail a test — never pass one.
+ */
+const SCAN_DEADLINE = 110_000;
+
+/**
+ * How long a scan stopped at the deadline gets to exit on SIGTERM before its
+ * process group is SIGKILLed.
+ */
+const STOP_GRACE = 5_000;
+
+/**
+ * Each scanning test's own timeout: the deadline plus room for the fixture
+ * git calls around it. It is set per test, not on the describe(), because a
+ * node:test suite timeout caps the whole suite's total run time, which under
+ * load would cancel tests that were each within their own deadline.
+ */
+const PER_TEST = { timeout: SCAN_DEADLINE + 10_000 };
+
+/** Signal a detached child's whole process group; it may already be gone. */
+function signalGroup(pid, signal) {
+  if (pid === undefined) {
+    return;
+  }
+  try {
+    process.kill(-pid, signal);
+  } catch {
+    // Already exited: nothing left to signal.
+  }
+}
+
+/** A random ASCII letter, either case. */
+function randomLetter() {
+  const index = randomInt(52);
+  return String.fromCodePoint(index < 26 ? 0x41 + index : 0x61 + index - 26);
+}
+
+/**
+ * A fresh, random, never-valid GitHub-PAT-shaped string.
+ *
+ * Letters and digits alternate, so no two letters are ever adjacent
+ * (AFixt/detect-features#112). trufflehog discards an unverified result whose
+ * value contains a dictionary word, case-insensitively, as a likely false
+ * positive. The canary used to be 36 fully random alphanumerics, and a few in
+ * a thousand of those contain a word ("ghp_…eGeFROmecor…" holds "from"), which
+ * trufflehog then dropped: the staged-canary test failed at random. With no
+ * letter pairs there is no word to find.
+ */
 function canary() {
-  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-  const body = Array.from(randomBytes(36), (b) => alphabet[b % alphabet.length]).join('');
+  let body = '';
+  for (let index = 0; index < 36; index++) {
+    body += index % 2 === 0 ? randomLetter() : String(randomInt(10));
+  }
   return `ghp_${body}`;
 }
 
@@ -92,20 +149,102 @@ function git(cwd, ...args) {
   return result.stdout;
 }
 
-/** Run the script under test in `cwd` and return its exit status and output. */
-function scan(cwd, mode) {
-  const result = spawnSync('bash', [SCRIPT], {
-    cwd,
-    encoding: 'utf8',
-    env: isolatedEnv({
-      TRUFFLEHOG_MODE: mode,
-      TRUFFLEHOG_RESULTS: 'unknown,unverified',
-    }),
+/** The widened result filter most tests use; see the file header. */
+const WIDE = { TRUFFLEHOG_RESULTS: 'unknown,unverified' };
+
+/**
+ * Run the script under test in `cwd` and resolve with its exit status and
+ * output. `env` is laid over the isolated environment; it defaults to the
+ * widened result filter. A run that outlives SCAN_DEADLINE is rejected with a
+ * message naming the timeout, so load shows up as a timeout rather than as a
+ * verdict, and then stopped.
+ */
+function scan(cwd, mode, env = WIDE) {
+  return new Promise((resolve, reject) => {
+    // Detached, so the script leads its own process group and the deadline
+    // can stop trufflehog with it. Stopping only bash would orphan the
+    // scanner, which would keep running on the already overloaded machine.
+    const child = spawn('bash', [SCRIPT], {
+      cwd,
+      detached: true,
+      env: isolatedEnv({ TRUFFLEHOG_MODE: mode, ...env }),
+    });
+    let forceTimer;
+    const timer = setTimeout(() => {
+      reject(
+        new Error(
+          `run-trufflehog.sh did not finish within ${String(SCAN_DEADLINE / 1000)}s ` +
+            '(machine load?). This is a timeout, not a scan result.'
+        )
+      );
+      // SIGTERM first: the script traps it and exits 1, and its EXIT trap
+      // then removes its staged-secrets.* temporary directory, which SIGKILL
+      // would leave behind. SIGKILL follows for anything that ignores TERM.
+      signalGroup(child.pid, 'SIGTERM');
+      forceTimer = setTimeout(() => signalGroup(child.pid, 'SIGKILL'), STOP_GRACE);
+    }, SCAN_DEADLINE);
+    let output = '';
+    child.stdout.on('data', (chunk) => (output += chunk.toString()));
+    child.stderr.on('data', (chunk) => (output += chunk.toString()));
+    child.on('error', (error) => {
+      clearTimeout(timer);
+      reject(error);
+    });
+    child.on('close', (status) => {
+      // bash waits for its foreground trufflehog before exiting, so once it
+      // has closed there is nothing left in the group to force.
+      clearTimeout(timer);
+      clearTimeout(forceTimer);
+      resolve({ status, output });
+    });
   });
-  return { status: result.status, output: `${result.stdout}${result.stderr}` };
 }
 
-describe('run-trufflehog.sh', { skip, timeout: 60_000 }, () => {
+/** Stage a random canary in `cwd`. */
+function stageCanary(cwd) {
+  fs.writeFileSync(path.join(cwd, 'config.txt'), `token = "${canary()}"\n`);
+  git(cwd, 'add', 'config.txt');
+}
+
+/**
+ * Stage a submodule (a gitlink, which has no content of its own) in `cwd`,
+ * cloned from a throwaway repository under `root`.
+ */
+function stageGitlink(cwd, root) {
+  const sub = path.join(root, 'sub');
+  fs.mkdirSync(sub);
+  git(sub, 'init', '-q');
+  git(sub, 'commit', '-q', '--allow-empty', '-m', 'sub');
+  git(cwd, '-c', 'protocol.file.allow=always', 'submodule', 'add', '-q', sub, 'vendor/sub');
+}
+
+/**
+ * A directory under `root` holding a `git` that behaves like the real one
+ * except that `checkout-index` swallows its input and writes nothing: an
+ * export that "succeeds" without exporting.
+ */
+function gitWithSilentExport(root) {
+  const realGit = spawnSync('bash', ['-c', 'command -v git'], {
+    encoding: 'utf8',
+    env: isolatedEnv(),
+  }).stdout.trim();
+  const bin = path.join(root, 'shim-bin');
+  fs.mkdirSync(bin);
+  const shim = path.join(bin, 'git');
+  fs.writeFileSync(
+    shim,
+    [
+      '#!/usr/bin/env bash',
+      'if [ "$1" = checkout-index ]; then cat >/dev/null; exit 0; fi',
+      `exec "${realGit}" "$@"`,
+      '',
+    ].join('\n')
+  );
+  fs.chmodSync(shim, 0o755);
+  return bin;
+}
+
+describe('run-trufflehog.sh', { skip }, () => {
   let root;
   let checkout;
   let worktree;
@@ -130,53 +269,147 @@ describe('run-trufflehog.sh', { skip, timeout: 60_000 }, () => {
     assert.equal(fs.statSync(path.join(worktree, '.git')).isFile(), true);
   });
 
+  it(
+    'every canary the tests can generate is one trufflehog reports (AFixt/detect-features#112)',
+    PER_TEST,
+    async () => {
+      // The premise of every "catches" test below. 1000 canaries in one scan;
+      // under the old fully random shape, about 2 or 3 of them went missing.
+      const dir = path.join(root, 'canaries');
+      fs.mkdirSync(dir);
+      const count = 1000;
+      for (let index = 0; index < count; index++) {
+        fs.writeFileSync(path.join(dir, `c${String(index)}.txt`), `token = "${canary()}"\n`);
+      }
+
+      // Asynchronous with a deadline, for the same reason as scan().
+      const { stdout, stderr } = await promisify(execFile)(
+        'trufflehog',
+        [
+          'filesystem',
+          dir,
+          '--results=unknown,unverified',
+          '--no-verification',
+          '--no-update',
+          '--json',
+        ],
+        {
+          encoding: 'utf8',
+          timeout: SCAN_DEADLINE,
+          killSignal: 'SIGKILL',
+          env: isolatedEnv(),
+          maxBuffer: 64 * 1024 * 1024,
+        }
+      );
+
+      const found = new Set(
+        stdout
+          .trim()
+          .split('\n')
+          .map((line) => JSON.parse(line).Raw)
+      );
+      assert.equal(found.size, count, stderr);
+    }
+  );
+
+  describe('staged mode fails closed (AFixt/detect-features#112)', () => {
+    it(
+      'blocks when verification cannot complete, under the hook default filter',
+      PER_TEST,
+      async () => {
+        // A dead proxy makes every verification request fail, as a timeout on a
+        // loaded or offline machine does. trufflehog then reports the canary as
+        // "unknown"; --only-verified used to drop it and exit 0.
+        stageCanary(checkout);
+        const deadProxy = 'http://127.0.0.1:9';
+
+        const { status, output } = await scan(checkout, 'staged', {
+          HTTPS_PROXY: deadProxy,
+          https_proxy: deadProxy,
+          NO_PROXY: '',
+          no_proxy: '',
+          TRUFFLEHOG_RESULTS: '',
+        });
+
+        assert.equal(status, FOUND, output);
+      }
+    );
+
+    it(
+      'refuses to report clean when the export wrote fewer files than are staged',
+      PER_TEST,
+      async () => {
+        stageCanary(checkout);
+        const shimBin = gitWithSilentExport(root);
+
+        const { status, output } = await scan(checkout, 'staged', {
+          ...WIDE,
+          PATH: `${shimBin}${path.delimiter}${process.env.PATH ?? ''}`,
+        });
+
+        assert.match(output, /exported 0 of 1 staged files/);
+        assert.equal(status, 1, output);
+      }
+    );
+  });
+
   for (const [label, dir] of [
     ['a normal checkout', () => checkout],
     ['a git worktree', () => worktree],
   ]) {
     describe(`staged mode in ${label}`, () => {
-      it('catches a staged canary', () => {
+      it('catches a staged canary', PER_TEST, async () => {
         const cwd = dir();
-        fs.writeFileSync(path.join(cwd, 'config.txt'), `token = "${canary()}"\n`);
-        git(cwd, 'add', 'config.txt');
+        stageCanary(cwd);
 
-        const { status, output } = scan(cwd, 'staged');
+        const { status, output } = await scan(cwd, 'staged');
 
         assert.doesNotMatch(output, /not a directory/);
         assert.equal(status, FOUND, output);
       });
 
-      it('scans the staged version, not the working tree', () => {
+      it('scans the staged version, not the working tree', PER_TEST, async () => {
         const cwd = dir();
         fs.writeFileSync(path.join(cwd, 'config.txt'), 'token = "placeholder"\n');
         git(cwd, 'add', 'config.txt');
         // Unstaged edit: this is not what the commit would contain.
         fs.writeFileSync(path.join(cwd, 'config.txt'), `token = "${canary()}"\n`);
 
-        const { status, output } = scan(cwd, 'staged');
+        const { status, output } = await scan(cwd, 'staged');
 
         assert.equal(status, 0, output);
       });
 
-      it('passes when only deletions are staged', () => {
+      it('passes when only deletions are staged', PER_TEST, async () => {
         const cwd = dir();
         git(cwd, 'rm', '-q', 'README.md');
 
-        const { status, output } = scan(cwd, 'staged');
+        const { status, output } = await scan(cwd, 'staged');
 
         assert.equal(status, 0, output);
         assert.match(output, /nothing staged/);
       });
+
+      it('still catches a canary staged alongside a submodule', PER_TEST, async () => {
+        const cwd = dir();
+        stageGitlink(cwd, root);
+        stageCanary(cwd);
+
+        const { status, output } = await scan(cwd, 'staged');
+
+        assert.doesNotMatch(output, /refusing/);
+        assert.equal(status, FOUND, output);
+      });
     });
 
     describe(`full mode in ${label}`, () => {
-      it('catches a committed canary', () => {
+      it('catches a committed canary', PER_TEST, async () => {
         const cwd = dir();
         fs.writeFileSync(path.join(cwd, 'config.txt'), `token = "${canary()}"\n`);
         git(cwd, 'add', 'config.txt');
         git(cwd, 'commit', '-q', '-m', 'add config');
 
-        const { status, output } = scan(cwd, 'full');
+        const { status, output } = await scan(cwd, 'full');
 
         assert.doesNotMatch(output, /not a directory/);
         assert.equal(status, FOUND, output);

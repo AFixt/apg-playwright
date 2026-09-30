@@ -1,7 +1,8 @@
 #!/usr/bin/env sh
 
-# Lint and format staged files, then scan the staged content for verified
-# secrets. To bypass (e.g. WIP commits): git commit --no-verify
+# Lint and format staged files, then scan the staged content for secrets that
+# are verified or whose verification could not complete. To bypass (e.g. WIP
+# commits): git commit --no-verify
 
 npx lint-staged || exit 1
 
