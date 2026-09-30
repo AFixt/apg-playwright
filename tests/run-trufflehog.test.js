@@ -42,10 +42,17 @@ const skip = hasTrufflehog ? false : 'trufflehog is not installed';
  * seconds; on a heavily loaded machine one took minutes. The scans are
  * asynchronous because node:test cannot time out synchronous code: a
  * spawnSync that hangs would hang the suite silently, and the per-test
- * timeout would never fire. A killed run has no exit status, so the deadline
- * can only ever fail a test — never pass one.
+ * timeout would never fire. A run past the deadline is rejected before it is
+ * stopped, so whatever status it exits with is ignored: the deadline can only
+ * ever fail a test — never pass one.
  */
 const SCAN_DEADLINE = 110_000;
+
+/**
+ * How long a scan stopped at the deadline gets to exit on SIGTERM before its
+ * process group is SIGKILLed.
+ */
+const STOP_GRACE = 5_000;
 
 /**
  * Each scanning test's own timeout: the deadline plus room for the fixture
@@ -55,15 +62,15 @@ const SCAN_DEADLINE = 110_000;
  */
 const PER_TEST = { timeout: SCAN_DEADLINE + 10_000 };
 
-/** SIGKILL a detached child's whole process group; it may already be gone. */
-function killGroup(pid) {
+/** Signal a detached child's whole process group; it may already be gone. */
+function signalGroup(pid, signal) {
   if (pid === undefined) {
     return;
   }
   try {
-    process.kill(-pid, 'SIGKILL');
+    process.kill(-pid, signal);
   } catch {
-    // Already exited: nothing left to kill.
+    // Already exited: nothing left to signal.
   }
 }
 
@@ -148,28 +155,33 @@ const WIDE = { TRUFFLEHOG_RESULTS: 'unknown,unverified' };
 /**
  * Run the script under test in `cwd` and resolve with its exit status and
  * output. `env` is laid over the isolated environment; it defaults to the
- * widened result filter. A run that outlives SCAN_DEADLINE is killed and
- * rejected with a message naming the timeout, so load shows up as a timeout
- * rather than as a verdict.
+ * widened result filter. A run that outlives SCAN_DEADLINE is rejected with a
+ * message naming the timeout, so load shows up as a timeout rather than as a
+ * verdict, and then stopped.
  */
 function scan(cwd, mode, env = WIDE) {
   return new Promise((resolve, reject) => {
     // Detached, so the script leads its own process group and the deadline
-    // can kill trufflehog with it. Killing only bash would orphan the
+    // can stop trufflehog with it. Stopping only bash would orphan the
     // scanner, which would keep running on the already overloaded machine.
     const child = spawn('bash', [SCRIPT], {
       cwd,
       detached: true,
       env: isolatedEnv({ TRUFFLEHOG_MODE: mode, ...env }),
     });
+    let forceTimer;
     const timer = setTimeout(() => {
-      killGroup(child.pid);
       reject(
         new Error(
           `run-trufflehog.sh did not finish within ${String(SCAN_DEADLINE / 1000)}s ` +
             '(machine load?). This is a timeout, not a scan result.'
         )
       );
+      // SIGTERM first: the script traps it and exits 1, and its EXIT trap
+      // then removes its staged-secrets.* temporary directory, which SIGKILL
+      // would leave behind. SIGKILL follows for anything that ignores TERM.
+      signalGroup(child.pid, 'SIGTERM');
+      forceTimer = setTimeout(() => signalGroup(child.pid, 'SIGKILL'), STOP_GRACE);
     }, SCAN_DEADLINE);
     let output = '';
     child.stdout.on('data', (chunk) => (output += chunk.toString()));
@@ -179,7 +191,10 @@ function scan(cwd, mode, env = WIDE) {
       reject(error);
     });
     child.on('close', (status) => {
+      // bash waits for its foreground trufflehog before exiting, so once it
+      // has closed there is nothing left in the group to force.
       clearTimeout(timer);
+      clearTimeout(forceTimer);
       resolve({ status, output });
     });
   });
