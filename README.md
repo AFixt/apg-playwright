@@ -116,9 +116,14 @@ Husky also installs a pre-push hook that runs the fleet secret gate, `~/.fleet-s
 
 Hand-rolling either pattern inside a spec would produce a test that cannot fail, so neither is stubbed out here.
 
-## The `smol-toml` override
+## The `overrides` entries
 
-`package.json` carries one `overrides` entry, pinning `smol-toml` to `^1.9.0`. It exists
+`package.json` carries two `overrides` entries, both for packages markdownlint-cli pins
+below their fixed release.
+
+### `smol-toml`
+
+The first pins `smol-toml` to `^1.9.0`. It exists
 because `markdownlint-cli` 0.49.1 — its latest release — declares `smol-toml@~1.7.0`, and
 every `smol-toml` at or below `1.8.0` carries
 [GHSA-r4xh-jqrq-34v2](https://github.com/advisories/GHSA-r4xh-jqrq-34v2), a moderate
@@ -134,6 +139,20 @@ markdownlint-cli was run with a TOML `--config` under the override and applied i
 (`MD013 = false` turned the line-length rule off).
 
 **Remove it** when markdownlint-cli ships a release whose `smol-toml` range admits `>= 1.9.0`.
+
+### `js-yaml`
+
+The second is scoped to markdownlint-cli and lifts its `js-yaml` to `^5.4.1`.
+markdownlint-cli 0.49.1 declares `js-yaml@~5.2.1`, and every `js-yaml` from `5.0.0` to
+`5.4.0` carries [GHSA-r3ph-w7gj-g6xm](https://github.com/advisories/GHSA-r3ph-w7gj-g6xm),
+a moderate CPU-exhaustion through YAML merge keys, which both `npm audit` and OSV-Scanner
+report. markdownlint-cli uses `js-yaml` for one call, `load()`, to read a YAML config. This
+repository's config is `.markdownlint.jsonc`, and a YAML `--config` was checked under the
+override: `MD013: false` turned the line-length rule off. The override is scoped to
+markdownlint-cli because nothing else in the tree uses `js-yaml`, and a global entry would
+also capture any future `js-yaml` 4.x consumer.
+
+**Remove it** when markdownlint-cli ships a release whose `js-yaml` range admits `>= 5.4.1`.
 
 ## Related
 
