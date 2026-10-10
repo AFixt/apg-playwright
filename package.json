@@ -21,8 +21,8 @@
     "lint": "eslint .",
     "knip": "knip",
     "lint:fix": "eslint . --fix",
-    "markdownlint": "markdownlint-cli2 \"**/*.md\" \"#node_modules\"",
-    "markdownlint:fix": "markdownlint-cli2 --fix \"**/*.md\" \"#node_modules\"",
+    "markdownlint": "markdownlint \"**/*.md\" --ignore node_modules --ignore playwright-report --ignore test-results",
+    "markdownlint:fix": "markdownlint --fix \"**/*.md\" --ignore node_modules --ignore playwright-report --ignore test-results",
     "check": "npm run lint && npm run knip && npm run format:check && npm run markdownlint",
     "check:all": "npm run check && npm run dupes && npm run license:check && npm run test:scripts",
     "format": "prettier --write .",
@@ -46,10 +46,13 @@
     "knip": "^6.39.0",
     "license-checker-rseidelsohn": "^4.4.2",
     "lint-staged": "^16.4.0",
-    "markdownlint-cli2": "^0.23.3",
+    "markdownlint-cli": "0.49.1",
     "prettier": "^3.9.9"
   },
   "overrides": {
-    "smol-toml": "^1.8.0"
+    "smol-toml": "^1.9.0",
+    "markdownlint-cli": {
+      "js-yaml": "^5.4.1"
+    }
   }
 }

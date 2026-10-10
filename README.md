@@ -116,27 +116,43 @@ Husky also installs a pre-push hook that runs the fleet secret gate, `~/.fleet-s
 
 Hand-rolling either pattern inside a spec would produce a test that cannot fail, so neither is stubbed out here.
 
-## The `smol-toml` override
+## The `overrides` entries
 
-`package.json` carries one `overrides` entry, pinning `smol-toml` to `^1.8.0`. It exists
-because `markdownlint-cli2` — at its latest release — depends on `smol-toml@1.7.0`, and
-everything at or below `1.7.0` carries
-[GHSA-7w5x-hrqm-74c2](https://github.com/advisories/GHSA-7w5x-hrqm-74c2), a high-severity
-denial of service via malformed TOML.
+`package.json` carries two `overrides` entries, both for packages markdownlint-cli pins
+below their fixed release.
 
-Worth knowing before anyone runs `npm audit fix --force`: npm reports the fix as
-`markdownlint-cli2@0.21.0`, which is a **downgrade** from what is installed — and would not
-clear the advisory anyway, because no published markdownlint-cli2 depends on a patched
-`smol-toml`.
+### `smol-toml`
+
+The first pins `smol-toml` to `^1.9.0`. It exists
+because `markdownlint-cli` 0.49.1 — its latest release — declares `smol-toml@~1.7.0`, and
+every `smol-toml` at or below `1.8.0` carries
+[GHSA-r4xh-jqrq-34v2](https://github.com/advisories/GHSA-r4xh-jqrq-34v2), a moderate
+denial of service through quadratic-time parsing (`1.7.0` and below also carry the high
+[GHSA-7w5x-hrqm-74c2](https://github.com/advisories/GHSA-7w5x-hrqm-74c2)). Without the
+override npm would install `1.7.2` for markdownlint-cli; with it, markdownlint-cli and knip
+share `1.9.1`.
 
 It is safe here for a reason that was tested rather than assumed: `smol-toml` is
-markdownlint-cli2's TOML config parser, and this repository configures it with
-`.markdownlint-cli2.jsonc`, so the parser is never reached in normal use. Beyond that,
-markdownlint-cli2 was run against a TOML config under the override and behaved correctly —
-a valid `--config *.toml` applied its rules, and a deliberately malformed one produced a
-`smol-toml` parse error with line and column.
+markdownlint-cli's TOML config parser, and this repository configures it with
+`.markdownlint.jsonc`, so the parser is never reached in normal use. Beyond that,
+markdownlint-cli was run with a TOML `--config` under the override and applied its rules
+(`MD013 = false` turned the line-length rule off).
 
-**Remove it** when markdownlint-cli2 ships a release depending on `smol-toml >= 1.7.1`.
+**Remove it** when markdownlint-cli ships a release whose `smol-toml` range admits `>= 1.9.0`.
+
+### `js-yaml`
+
+The second is scoped to markdownlint-cli and lifts its `js-yaml` to `^5.4.1`.
+markdownlint-cli 0.49.1 declares `js-yaml@~5.2.1`, and every `js-yaml` from `5.0.0` to
+`5.4.0` carries [GHSA-r3ph-w7gj-g6xm](https://github.com/advisories/GHSA-r3ph-w7gj-g6xm),
+a moderate CPU-exhaustion through YAML merge keys, which both `npm audit` and OSV-Scanner
+report. markdownlint-cli uses `js-yaml` for one call, `load()`, to read a YAML config. This
+repository's config is `.markdownlint.jsonc`, and a YAML `--config` was checked under the
+override: `MD013: false` turned the line-length rule off. The override is scoped to
+markdownlint-cli because nothing else in the tree uses `js-yaml`, and a global entry would
+also capture any future `js-yaml` 4.x consumer.
+
+**Remove it** when markdownlint-cli ships a release whose `js-yaml` range admits `>= 5.4.1`.
 
 ## Related
 
