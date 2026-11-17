@@ -130,4 +130,6 @@ dist
 .pnp.*
 playwright-report/
 test-results/
+# Local SARIF from `npm run security:codeql`
+reports/
 .env
