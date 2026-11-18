@@ -10,4 +10,9 @@
   // `entry`/`ignore`/`ignoreDependencies` rule with the reason next to it,
   // rather than switching off a category. The report is kept at zero, which is
   // what makes any output meaningful.
+
+  // .apg-react/ is the AFixt/apg-react checkout CI clones in-tree to serve the
+  // demo pages. It is not this suite's code, so its files and dependencies are
+  // not this repo's to report.
+  "ignore": [".apg-react/**"],
 }

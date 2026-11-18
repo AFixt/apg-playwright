@@ -4,7 +4,11 @@ const playwright = require('eslint-plugin-playwright');
 
 module.exports = [
   {
-    ignores: ['node_modules/**', 'playwright-report/**', 'test-results/**'],
+    // .apg-react/ is the apg-react checkout CI clones in-tree to serve the
+    // demo pages. It is not this suite's code, and ESLint 10 resolves config
+    // per file, so linting it loads apg-react's own config and plugins, which
+    // crash under this ESLint.
+    ignores: ['node_modules/**', 'playwright-report/**', 'test-results/**', '.apg-react/**'],
   },
   js.configs.recommended,
   {
