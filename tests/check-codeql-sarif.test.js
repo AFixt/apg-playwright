@@ -120,6 +120,37 @@ describe('check-codeql-sarif.sh', { skip }, () => {
     assert.equal(gate(sarifDirectory([{ ruleId: 'js/error-rule', ruleIndex: 0 }])).status, 1);
   });
 
+  it("takes the index into the extension the result names, not the driver's rules", () => {
+    const directory = sarifDirectory();
+    const extensionRules = [
+      { id: 'js/ext-note', defaultConfiguration: { level: 'note' } },
+      {
+        id: 'js/ext-high',
+        defaultConfiguration: { level: 'warning' },
+        properties: { 'security-severity': '8.1' },
+      },
+    ];
+    const log = {
+      version: '2.1.0',
+      runs: [
+        {
+          tool: { driver: { rules: RULES }, extensions: [{ rules: extensionRules }] },
+          results: [
+            // Index 0 in the driver is the error rule; in the extension it is a note.
+            { ruleId: 'js/ext-note', rule: { index: 0, toolComponent: { index: 0 } } },
+          ],
+        },
+      ],
+    };
+    fs.writeFileSync(path.join(directory, 'ext.sarif'), JSON.stringify(log));
+    assert.equal(gate(directory).status, 0);
+    log.runs[0].results = [
+      { ruleId: 'js/ext-high', rule: { index: 1, toolComponent: { index: 0 } } },
+    ];
+    fs.writeFileSync(path.join(directory, 'ext.sarif'), JSON.stringify(log));
+    assert.equal(gate(directory).status, 1);
+  });
+
   it('looks the rule up by id when the result carries no index', () => {
     assert.equal(gate(sarifDirectory([{ ruleId: 'js/error-rule' }])).status, 1);
     assert.equal(gate(sarifDirectory([{ ruleId: 'js/high-warning' }])).status, 1);

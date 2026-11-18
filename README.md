@@ -83,20 +83,21 @@ Both live in `specs/support/apg.js`. The assertions the specs make — including
 
 The suite follows the AFixt standard tooling, so the same commands work here as in the sibling repos:
 
-| Command                       | Checks                                                       |
-| ----------------------------- | ------------------------------------------------------------ |
-| `npm run lint`                | ESLint, including the Playwright plugin's spec-hygiene rules |
-| `npm run knip`                | Unused files, exports and dependencies (kept at zero)        |
-| `npm run format:check`        | Prettier                                                     |
-| `npm run markdownlint`        | Markdown                                                     |
-| `npm run dupes`               | jscpd copy/paste detection, failing above 5% duplication     |
-| `npm run license:check`       | Dependency licences against the allow-list                   |
-| `npm run security:audit`      | `npm audit` at `high` and above                              |
-| `npm run security:trufflehog` | TruffleHog, full git history, verified + `unknown` secrets   |
-| `npm run security:codeql`     | CodeQL `security-extended`, then the same gate CI applies    |
-| `npm run test:scripts`        | `node:test` suite for the repo's own scripts (`tests/`)      |
-| `npm run check`               | lint + knip + format + markdown                              |
-| `npm run check:all`           | `check` plus duplication, licences and `test:scripts`        |
+| Command                        | Checks                                                          |
+| ------------------------------ | --------------------------------------------------------------- |
+| `npm run lint`                 | ESLint, including the Playwright plugin's spec-hygiene rules    |
+| `npm run knip`                 | Unused files, exports and dependencies (kept at zero)           |
+| `npm run format:check`         | Prettier                                                        |
+| `npm run markdownlint`         | Markdown                                                        |
+| `npm run dupes`                | jscpd copy/paste detection, failing above 5% duplication        |
+| `npm run license:check`        | Dependency licences against the allow-list                      |
+| `npm run security:audit`       | `npm audit` at `high` and above                                 |
+| `npm run security:trufflehog`  | TruffleHog, full git history, verified + `unknown` secrets      |
+| `npm run security:codeql`      | CodeQL `security-extended`, then the same gate CI applies       |
+| `npm run security:codeql:gate` | The CodeQL gate alone, re-judging an existing `reports/codeql/` |
+| `npm run test:scripts`         | `node:test` suite for the repo's own scripts (`tests/`)         |
+| `npm run check`                | lint + knip + format + markdown                                 |
+| `npm run check:all`            | `check` plus duplication, licences and `test:scripts`           |
 
 `.github/workflows/ci.yml` runs the linters, the duplication check, `npm audit` and the full three-engine suite on every pull request. `.github/workflows/security.yml` runs the slower scans — CodeQL, OSV-Scanner, Semgrep's OWASP Top 10 rules, and the licence check — on every pull request too. The CodeQL job's verdict comes from `scripts/check-codeql-sarif.sh`, which fails on any error-level finding or any finding whose rule has a High or Critical security-severity (GitHub's default code-scanning threshold); `npm run security:codeql` runs the same analysis and that same script locally (it needs the CodeQL CLI and `jq`), and `npm run security:codeql:gate` re-judges an existing `reports/codeql/` without re-analysing. There is no Dependabot: dependency updates are raised by hand through the repository's own tooling, on demand.
 

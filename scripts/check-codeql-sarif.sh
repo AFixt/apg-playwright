@@ -39,13 +39,18 @@ fi
 
 # Resolve each result's rule by index when it carries one and by id when it
 # does not -- never by falling back to rules[0], which would borrow an
-# unrelated rule's severity. The level follows SARIF 2.1.0 section 3.27.10: the
-# result's own level, else the rule's defaultConfiguration.level, else
-# "warning". `-s` reads every file into one array, so one pass covers them all.
+# unrelated rule's severity. The index counts into the tool component the
+# result names (rule.toolComponent.index, SARIF 2.1.0 section 3.52.7): an
+# extension's own rules when it names one, the driver's otherwise. The level
+# follows SARIF 2.1.0 section 3.27.10: the result's own level, else the
+# rule's defaultConfiguration.level, else "warning". `-s` reads every file
+# into one array, so one pass covers them all.
 findings=$(jq -rs '
   [ .[] | .runs[] as $run
-    | ($run.tool.driver.rules // []) as $rules
     | ($run.results // [])[] as $res
+    | ($res.rule.toolComponent.index) as $tc
+    | (if $tc == null then ($run.tool.driver.rules // [])
+       else ($run.tool.extensions[$tc].rules // []) end) as $rules
     | (($res.rule.index // $res.ruleIndex) as $i
        | if $i == null
          then ([$rules[] | select(.id == ($res.ruleId // $res.rule.id))] | first)
