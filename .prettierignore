@@ -2,6 +2,10 @@ node_modules
 playwright-report
 test-results
 package-lock.json
+# The AFixt/apg-react checkout CI clones in-tree to serve the demo pages. Not
+# this suite's code, and its own Prettier config needs plugins not installed
+# here.
+.apg-react
 
 # Claude Code's per-developer local settings (git-ignored, but Prettier does
 # not read .gitignore). Scoped to the one local file rather than all of
