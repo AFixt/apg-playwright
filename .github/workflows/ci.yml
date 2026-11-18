@@ -95,10 +95,14 @@ jobs:
       - name: Copy/paste detection
         run: npm run dupes
 
-      # Deliberately not `--omit=dev`, which is the house default for a
-      # published package: every dependency here is a devDependency, so
-      # omitting them would audit an empty tree and pass unconditionally.
-      # Kept here when security.yml's duplicate npm-audit job was removed.
+      # Production dependencies only (`--omit=dev`), under the fleet rule of
+      # 2026-11-17 that dependency-audit gates scan production deps only. Every
+      # dependency here is a devDependency today, so this audits an empty tree
+      # and passes; a production dependency, once added, is audited and fails
+      # the job at `high` and above. Dev-only advisories with no fix (picomatch
+      # GHSA-fc5q-39xc-vjpf) used to stop the job here, before the Playwright
+      # suite ran. Kept here when security.yml's duplicate npm-audit job was
+      # removed.
       - name: npm audit
         run: npm run security:audit
 
