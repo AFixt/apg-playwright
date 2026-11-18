@@ -83,22 +83,24 @@ Both live in `specs/support/apg.js`. The assertions the specs make — including
 
 The suite follows the AFixt standard tooling, so the same commands work here as in the sibling repos:
 
-| Command                       | Checks                                                       |
-| ----------------------------- | ------------------------------------------------------------ |
-| `npm run lint`                | ESLint, including the Playwright plugin's spec-hygiene rules |
-| `npm run knip`                | Unused files, exports and dependencies (kept at zero)        |
-| `npm run format:check`        | Prettier                                                     |
-| `npm run markdownlint`        | Markdown                                                     |
-| `npm run dupes`               | jscpd copy/paste detection, failing above 5% duplication     |
-| `npm run license:check`       | Dependency licences against the allow-list                   |
-| `npm run security:audit`      | `npm audit` at `high` and above                              |
-| `npm run security:osv`        | OSV-Scanner over production dependencies only                |
-| `npm run security:trufflehog` | TruffleHog, full git history, verified + `unknown` secrets   |
-| `npm run test:scripts`        | `node:test` suite for the repo's own scripts (`tests/`)      |
-| `npm run check`               | lint + knip + format + markdown                              |
-| `npm run check:all`           | `check` plus duplication, licences and `test:scripts`        |
+| Command                        | Checks                                                          |
+| ------------------------------ | --------------------------------------------------------------- |
+| `npm run lint`                 | ESLint, including the Playwright plugin's spec-hygiene rules    |
+| `npm run knip`                 | Unused files, exports and dependencies (kept at zero)           |
+| `npm run format:check`         | Prettier                                                        |
+| `npm run markdownlint`         | Markdown                                                        |
+| `npm run dupes`                | jscpd copy/paste detection, failing above 5% duplication        |
+| `npm run license:check`        | Dependency licences against the allow-list                      |
+| `npm run security:audit`       | `npm audit` at `high` and above                                 |
+| `npm run security:osv`         | OSV-Scanner over production dependencies only                   |
+| `npm run security:trufflehog`  | TruffleHog, full git history, verified + `unknown` secrets      |
+| `npm run security:codeql`      | CodeQL `security-extended`, then the same gate CI applies       |
+| `npm run security:codeql:gate` | The CodeQL gate alone, re-judging an existing `reports/codeql/` |
+| `npm run test:scripts`         | `node:test` suite for the repo's own scripts (`tests/`)         |
+| `npm run check`                | lint + knip + format + markdown                                 |
+| `npm run check:all`            | `check` plus duplication, licences and `test:scripts`           |
 
-`.github/workflows/ci.yml` runs the linters, the duplication check, `npm audit` and the full three-engine suite on every pull request. `.github/workflows/security.yml` runs the slower scans — CodeQL, OSV-Scanner, Semgrep's OWASP Top 10 rules, and the licence check — on every pull request too. The OSV-Scanner job runs `npm run security:osv`, which scans a copy of `package-lock.json` with the dev-only (`"dev": true`) entries removed, under the fleet rule that dependency-audit gates scan production dependencies only. Every dependency here is a devDependency today, so that scan reports that there is nothing to scan and passes; a production dependency, once added, is scanned and fails the job on any advisory. There is no Dependabot: dependency updates are raised by hand through the repository's own tooling, on demand.
+`.github/workflows/ci.yml` runs the linters, the duplication check, `npm audit` and the full three-engine suite on every pull request. `.github/workflows/security.yml` runs the slower scans — CodeQL, OSV-Scanner, Semgrep's OWASP Top 10 rules, and the licence check — on every pull request too. The CodeQL job's verdict comes from `scripts/check-codeql-sarif.sh`, which fails on any error-level finding or any finding whose rule has a High or Critical security-severity (GitHub's default code-scanning threshold); `npm run security:codeql` runs the same analysis and that same script locally (it needs the CodeQL CLI and `jq`), and `npm run security:codeql:gate` re-judges an existing `reports/codeql/` without re-analysing. The OSV-Scanner job runs `npm run security:osv`, which scans a copy of `package-lock.json` with the dev-only (`"dev": true`) entries removed, under the fleet rule that dependency-audit gates scan production dependencies only. Every dependency here is a devDependency today, so that scan reports that there is nothing to scan and passes; a production dependency, once added, is scanned and fails the job on any advisory. There is no Dependabot: dependency updates are raised by hand through the repository's own tooling, on demand.
 
 Husky installs a pre-commit hook that runs ESLint, Prettier and markdownlint over staged files, then `scripts/run-trufflehog.sh` in staged mode: it writes the index version of each staged file to a temporary directory and scans that for verified secrets and for ones whose verification could not complete (trufflehog's `unknown`, e.g. offline or timed out), so a scan that cannot decide blocks rather than passes. It also refuses to report clean if fewer files were exported than are staged. It checks exactly what the commit will contain and works the same from a git worktree. The scan is skipped with a warning when `trufflehog` is not installed. Bypass the hook with `git commit --no-verify` when you need to.
 

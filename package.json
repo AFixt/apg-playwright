@@ -32,6 +32,8 @@
     "security:audit": "npm audit --audit-level=high",
     "security:osv": "bash scripts/osv-production.sh",
     "security:trufflehog": "bash scripts/run-trufflehog.sh",
+    "security:codeql": "bash scripts/run-codeql.sh",
+    "security:codeql:gate": "bash scripts/check-codeql-sarif.sh reports/codeql",
     "test:scripts": "node --test \"tests/**/*.test.js\"",
     "test:engines": "playwright test",
     "prepare": "husky"

@@ -39,6 +39,13 @@ jobs:
           languages: javascript-typescript
           queries: security-extended
       - uses: github/codeql-action/analyze@ff2f1c621b7f889edc0d3c761ac2e6a3f8cdb0dd # v4.37.7
+        with:
+          output: reports/codeql
+      # The verdict lives in a script so it can be reached before pushing:
+      # `npm run security:codeql` runs the same analysis locally and then this
+      # same gate against its own SARIF (#62).
+      - name: Fail on CodeQL findings at the code-scanning threshold
+        run: bash scripts/check-codeql-sarif.sh reports/codeql
 
   osv-scanner:
     name: OSV-Scanner
