@@ -69,7 +69,15 @@ jobs:
             | sha256sum --check --strict
           chmod +x /tmp/osv-scanner
           sudo mv /tmp/osv-scanner /usr/local/bin/osv-scanner
-      - run: osv-scanner --lockfile=package-lock.json
+      # Production dependencies only (Karl's fleet ruling, 2026-11-17), via the
+      # same `npm run security:osv` a local run uses. The script scans a copy
+      # of package-lock.json with the `"dev": true` entries removed; see
+      # scripts/osv-production.sh. No `npm ci` is needed: it reads only the
+      # lockfile, and Node is here for the filter.
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version-file: .nvmrc
+      - run: npm run security:osv
 
   semgrep:
     name: Semgrep (OWASP Top 10)
