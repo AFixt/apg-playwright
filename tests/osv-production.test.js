@@ -90,6 +90,13 @@ describe('scripts/osv-production.sh', () => {
     assert.equal(result.status, 128);
   });
 
+  it('refuses a lockfile with no packages map instead of passing it', () => {
+    const result = run({ lockfileVersion: 1, dependencies: { prod: { version: '1.0.0' } } });
+    assert.equal(result.status, 2);
+    assert.match(result.stderr, /no "packages" map/);
+    assert.equal(fs.existsSync(capture), false);
+  });
+
   it('passes without calling the scanner when every entry is dev-only', () => {
     const result = run(lockfile({ 'node_modules/devonly': { version: '1.0.0', dev: true } }), 1);
     assert.equal(result.status, 0, result.stderr);

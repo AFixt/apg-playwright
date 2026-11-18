@@ -48,10 +48,17 @@ kept="$(node -e '
 const fs = require("node:fs");
 const [src, dest] = process.argv.slice(1);
 const lock = JSON.parse(fs.readFileSync(src, "utf8"));
+// No packages map (lockfile v1, or a truncated file) is not "no production
+// dependencies": the dev flags this filter reads are not there, so refuse
+// rather than pass a scan that read nothing.
+if (!lock.packages || typeof lock.packages !== "object") {
+  console.error(`osv-production: ${src} has no "packages" map (lockfileVersion 2 or later is required); refusing to report it clean.`);
+  process.exit(2);
+}
 const kept = {};
 let packages = 0;
 let dropped = 0;
-for (const [path, info] of Object.entries(lock.packages || {})) {
+for (const [path, info] of Object.entries(lock.packages)) {
   if (info.dev === true) {
     dropped += 1;
     continue;
@@ -62,7 +69,8 @@ for (const [path, info] of Object.entries(lock.packages || {})) {
 }
 lock.packages = kept;
 fs.writeFileSync(dest, JSON.stringify(lock));
-console.error(`osv-production: ${packages} production lockfile entries to scan (${dropped} dev-only entries left out).`);
+const noun = packages === 1 ? "entry" : "entries";
+console.error(`osv-production: ${packages} production lockfile ${noun} to scan (${dropped} dev-only entries left out).`);
 console.log(packages);
 ' "$lockfile" "$tmp/package-lock.json")"
 
