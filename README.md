@@ -6,7 +6,7 @@ Use them as a starting point for testing the accessibility of common widgets in 
 
 ## What these specs actually test
 
-The specs are generated from [`AFixt/apg-usecases`](https://github.com/AFixt/apg-usecases), which holds one machine-readable scenario per APG behaviour, and are cross-checked against the published APG. Three rules keep them meaningful:
+The specs are generated from `apg-usecases`, an internal AFixt repository (not public) that holds one machine-readable scenario per APG behaviour, and are cross-checked against the published APG. Three rules keep them meaningful:
 
 1. **Keyboard interaction is driven for real.** Specs reach a widget by pressing <kbd>Tab</kbd> from the top of the document, not by calling `element.focus()`. Programmatic focus hides an entire class of defect — a control that no keyboard user can reach still "focuses" fine from script. That distinction is not academic: it is how [apg-react#138](https://github.com/AFixt/apg-react/issues/138) was found, after a programmatic-focus suite had passed over it.
 2. **State is asserted as perceived, not just as markup.** `aria-expanded="false"` is paired with an assertion that the panel is genuinely hidden. Either one alone can pass while the widget is broken.
@@ -160,7 +160,7 @@ also capture any future `js-yaml` 4.x consumer.
 ## Related
 
 - [apg-gherkin](https://github.com/AFixt/apg-gherkin) — the same patterns as Gherkin features
-- [apg-usecases](https://github.com/AFixt/apg-usecases) — machine-readable per-scenario source
+- apg-usecases — machine-readable per-scenario source (internal AFixt repository, not public)
 - [apg-react](https://github.com/AFixt/apg-react) — the React implementation under test
 
 ## License
